@@ -1,4 +1,6 @@
-        if not isinstance(id, str):
+class IdentifiableEntity(object):
+    def __init__(self, id:str):
+if not isinstance(id, str):
             raise ValueError("IdentifiableEntity.id must be a string")
         self.id = id
 
