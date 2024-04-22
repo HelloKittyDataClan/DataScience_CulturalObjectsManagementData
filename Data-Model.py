@@ -1,11 +1,7 @@
-class IdentifiableEntity(object):
-    def __init__(self, id:str):
         if not isinstance(id, str):
             raise ValueError("IdentifiableEntity.id must be a string")
         self.id = id
 
-Members: Elena Binotti; Beatrice Bucci; Chiara Martina; Catalina Salguero
-Data Science project  2023/2024
     def getId(self):
         return self.id
 
@@ -113,7 +109,7 @@ class Activity(object):
             self.tool.append(tool)
         elif type(tool) == list:
             self.tool = tool
-
+        
         self.refersTo = refersTo
         self.institute = institute
         self.person = person
@@ -156,20 +152,11 @@ class Acquisition(Activity):
         super().__init__(refersTo, institute, person, start, end, tool)
         if not isinstance(technique, str):
             raise ValueError("Acquisition.technique must be a string")
-
+        
         self.technique = technique
 
-        def getTechnique(self):
+                      def getTechnique(self):
             return self.technique
 
 class Processing(Activity):
-    pass
-
-class Modelling(Activity):
-    pass
-
-class Optimising(Activity):
-    pass
-
-class Exporting(Activity):
     pass
