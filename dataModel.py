@@ -9,25 +9,32 @@ class IdentifiableEntity(object): #identifichiamo l'ID
     
 
 class CulturalObject(IdentifiableEntity):
-    def __init__(self, id:str, title:str, date:str, owner:str, place:str):  #vado a definire title, date, owner e place del mio csv
+    def __init__(self, id:str, title:str, date:str= None, owner:str, place:str):  #vado a definire title, date, owner e place del mio csv
         self.title=title
         self.date=date
         self.owner=owner
         self.place=place
+        self.authors=[]
         super().__init__(id) #cosi facendo vado a richiamare l'ID della classe IdentifiableEntity
 
     def getTitle(self):
         return self.title
-    
+
     def getDate(self):
-        return self.date
-    
+       return self.date
+
     def getOwner(self):
         return self.owner
-    
+
     def getPlace(self):
         return self.place
 
+    def getAuthors(self):
+        return self.authors
+
+    def addAuthor(self, author: Person):
+        self.authors.append(author)
+        
 #definiamo le sottoclassi relative alla classe Cultrual Object   
 class NauticalChart(CulturalObject):
     pass
