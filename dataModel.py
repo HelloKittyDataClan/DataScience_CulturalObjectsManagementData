@@ -17,6 +17,8 @@ class CulturalObject(IdentifiableEntity):
             raise ValueError("Owner must be a string for the CulturalObject")
         if not isinstance(place, str):
             raise ValueError("Place must be a string for the CulturalObject")
+        if date is not None and not isinstance(date, str):
+            raise ValueError("Date must be a string or None for the CulturalObject")
         self.title=title
         self.date=date
         self.owner=owner
