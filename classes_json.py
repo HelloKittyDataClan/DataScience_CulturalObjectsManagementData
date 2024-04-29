@@ -17,150 +17,67 @@ data = json.loads(json_data)
 
 #print(data) --> controllare
 
-#Classes and superclasses
-#Application of methods with Python
-class CulturalObject(object):
-    def __init__(self, objects_id):
-        self.id = set()
-        for identifier in objects_id:
-            self.id.add(identifier)
-
-            self.objects_id = objects_id
-            self.acquisition = None
-            self.processing = None
-            self.modelling = None
-            self.optimising = None
-            self.exporting = None
-            
-#Return a list of strings
-    def getIds(self):
-        result = []
-        for identifier in self.id:
-            result.append(identifier)
-        result.sort()
-        return result
-    
-    def addId(self, identifier):
-        result = True
-        if identifier not in self.id:
-            self.id.add(identifier)
-        else:
-            result = False
-        return result
-    
-    def removeId(self, identifier):
-        result = True
-        if identifier in self.id:
-            self.id.remove(identifier)
-        else:
-            result = False
-        return result
-
-class Acquisition:
-    def __init__(self, institute: str, person:str|list[str]|None=None, technique: str|list[str]|None= None, tools: str|list[str]|None= None, startDate:str= None, endDate:str= None):
-        if person is not None and not isinstance(person, (str, list)):
-            raise ValueError('Acquisition.person must be a string, a list of strings, or None')
-        if not isinstance(technique, str):
-            raise Exception('EntityWithMetadata.technique must be a string')
-        if tools is not None and not isinstance(tools, (str, list)):
-            raise ValueError('Acquisition.tools must be a string, a list of strings, or None')
+#Creation of class Activity that refers to CulturalObject
+class Activity:
+    def _init_(self, institute: str, person: str= None, tool: str|set[str]|None = None, start: str = None, end: str = None):
+        super().__init__(id)  #cosi facendo vado a richiamare l'ID della classe IdentifiableEntity
+        if not isinstance(institute, str):
+            raise ValueError("Institute must be a string for the Activity")
+        if person is not None and not isinstance(person, str):
+            raise ValueError("Person must be a string or None for the Activity")
+        if not isinstance(tool, str, set[str]):
+            raise ValueError("Tool must be a string or a set of strings for the Activity")
+        if start is not None and not isinstance(start, str):
+            raise ValueError("Start Date must be a string or None for the Activity")
+        if end is not None and not isinstance(start, str):
+            raise ValueError("End Date must be a string or None for the Activity")
+        self.institute = institute
+        self.person = person
+        self.tool = {}
+        self.start = start
+        self.end = end
         
-        self.Institute = institute
-        self.Person = person
-        self.technique = technique
-        self.tools = tools
-        self.startDate = startDate
-        self.endDate = endDate
-    
-    def getInstitute(self):
+    def getResponsibleInstitute(self):
         return self.responsibleInstitute
     
-    def getPerson(self):
+    def getResponsiblePerson(self):
         return self.responsiblePerson
+
+    def getTools(self):
+        return self.tools
     
+    def getStartDate(self):
+        return self.startDate 
+    
+    def getEndDate(self):
+        return self.endDate
+    
+    def refersTo(self, CulturalObject):
+        if isinstance(CulturalObject, CulturalObject):
+            self.title.append(CulturalObject)
+        else:
+            raise ValueError("Invalid object type provided")
+
+#Subclass of Activity just with technique parameter
+
+class Acquisition(Activity):
+    def _init_(self, technique: str):
+        super().__init__(technique) 
+        if not isinstance(technique, str):
+            raise ValueError("Acquisition.technique must be a string")
+        
     def getTechnique(self):
         return self.technique
 
-    def getTool(self):
-        return self.tools
-    
-    def getPeriod(self):
-        return f"{self.startDate} to {self.endDate}"
+#Subclasses without defined parameters
+class Processing(Activity):
+    pass
+        
+class Modelling(Activity):
+    pass
 
-class Processing:
-    def __init__(self, institute, person, tools, startDate, endDate):
-        self.Institute = institute
-        self.Person = person
-        self.tools = tools
-        self.startDate = startDate
-        self.endDate = endDate
+class Optimising(Activity):
+    pass
 
-class Modelling:
-    def __init__(self, institute, person, tools, startDate, endDate):
-        self.Institute = institute
-        self.Person = person
-        self.tools = tools
-        self.startDate = startDate
-        self.endDate = endDate
-
-class Optimising:
-    def __init__(self, institute, person, tools, startDate, endDate):
-        self.Institute = institute
-        self.Person = person
-        self.tools = tools
-        self.startDate = startDate
-        self.endDate = endDate
-
-class Exporting:
-    def __init__(self, institute, person, tools, startDate, endDate):
-        self.Institute = institute
-        self.Person = person
-        self.tools = tools
-        self.startDate = startDate
-        self.endDate = endDate
-
-# Create instances for each object using the provided data
-objects = []
-
-for item in data:
-    object = CulturalObject(item["object id"])
-    object.acquisition = Acquisition(
-        item["acquisition"]["institute"],
-        item["acquisition"]["person"],
-        item["acquisition"]["technique"],
-        item["acquisition"]["tool"],
-        item["acquisition"]["start date"],
-        item["acquisition"]["end date"]
-    )
-    object.processing = Processing(
-        item["processing"]["institute"],
-        item["processing"]["person"],
-        item["processing"]["tool"],
-        item["processing"]["start date"],
-        item["processing"]["end date"]
-    )
-    object.modelling = Modelling(
-        item["modelling"]["institute"],
-        item["modelling"]["person"],
-        item["modelling"]["tool"],
-        item["modelling"]["start date"],
-        item["modelling"]["end date"]
-    )
-    object.optimising = Optimising(
-        item["optimising"]["institute"],
-        item["optimising"]["person"],
-        item["optimising"]["tool"],
-        item["optimising"]["start date"],
-        item["optimising"]["end date"]
-    )
-    object.exporting = Exporting(
-        item["exporting"]["institute"],
-        item["exporting"]["person"],
-        item["exporting"]["tool"],
-        item["exporting"]["start date"],
-        item["exporting"]["end date"]
-    )
-    objects.append(object)
-
-# Now 'objects' contains instances of CulturalObject representing each object's data
-# with its associated acquisition, processing, modelling, optimising, and exporting details.
+class Exporting(Activity):
+    pass
