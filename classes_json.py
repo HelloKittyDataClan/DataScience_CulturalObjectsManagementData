@@ -54,7 +54,7 @@ class Activity(CulturalObject):
         return self.person
 
     def getTools(self):
-        return self.tools
+        return self.tool
     
     def getStartDate(self):
         return self.start 
