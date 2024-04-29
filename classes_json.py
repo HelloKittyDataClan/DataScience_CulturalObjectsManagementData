@@ -23,6 +23,7 @@ class Person(IdentifiableEntity):
         super().__init__(id)
         if not isinstance(name, str):
             raise ValueError("Name must be a string for the Person")
+        self.name = name
     
     def getName(self):
         return self.name
