@@ -15,10 +15,20 @@ data = json.loads(json_data)
 #Utilize the data for UML purposes
 #Print the data to inspect its structure
 
-#print(data) --> controllare
+#print(data) --> controller
+
+#Creation of class Person that refers to CulturalObject
+class Person(IdentifiableEntity):
+    def __init__(self, name: str): #define parameter name
+        super().__init__(id)
+        if not isinstance(name, str):
+            raise ValueError("Name must be a string for the Person")
+    
+    def getName(self):
+        return self.name
 
 #Creation of class Activity that refers to CulturalObject
-class Activity:
+class Activity(CulturalObject):
     def _init_(self, institute: str, person: str= None, tool: str|set[str]|None = None, start: str = None, end: str = None):
         super().__init__(title, date, owner, place)  #calling the parameters of the class CulturalObject
         if not isinstance(institute, str):
