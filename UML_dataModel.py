@@ -150,7 +150,7 @@ class Activity(CulturalObject):
         return self.end
     
     def refersTo(self, CulturalObject):
-        if isinstance(CulturalObject, CulturalObject):
+        if isinstance(CulturalObject):
             self.title.append(CulturalObject)
         else:
             raise ValueError("Invalid object type provided")
