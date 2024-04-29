@@ -48,19 +48,19 @@ class Activity(CulturalObject):
         self.end = end
         
     def getResponsibleInstitute(self):
-        return self.responsibleInstitute
+        return self.institute
     
     def getResponsiblePerson(self):
-        return self.responsiblePerson
+        return self.person
 
     def getTools(self):
         return self.tools
     
     def getStartDate(self):
-        return self.startDate 
+        return self.start 
     
     def getEndDate(self):
-        return self.endDate
+        return self.end
     
     def refersTo(self, CulturalObject):
         if isinstance(CulturalObject, CulturalObject):
