@@ -75,6 +75,7 @@ class Acquisition(Activity):
         super().__init__(institute, person, tools, start, end) 
         if not isinstance(technique, str):
             raise ValueError("Acquisition.technique must be a string")
+        self.technique = technique
         
     def getTechnique(self):
         return self.technique
