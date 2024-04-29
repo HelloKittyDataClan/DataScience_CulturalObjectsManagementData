@@ -20,7 +20,7 @@ data = json.loads(json_data)
 #Creation of class Activity that refers to CulturalObject
 class Activity:
     def _init_(self, institute: str, person: str= None, tool: str|set[str]|None = None, start: str = None, end: str = None):
-        super().__init__(id)  #cosi facendo vado a richiamare l'ID della classe IdentifiableEntity
+        super().__init__(title, date, owner, place)  #calling the parameters of the class CulturalObject
         if not isinstance(institute, str):
             raise ValueError("Institute must be a string for the Activity")
         if person is not None and not isinstance(person, str):
@@ -62,7 +62,7 @@ class Activity:
 
 class Acquisition(Activity):
     def _init_(self, technique: str):
-        super().__init__(technique) 
+        super().__init__(institute, person, tools, start, end) 
         if not isinstance(technique, str):
             raise ValueError("Acquisition.technique must be a string")
         
