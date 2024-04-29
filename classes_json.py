@@ -31,7 +31,7 @@ class Person(IdentifiableEntity):
 #Creation of class Activity that refers to CulturalObject
 class Activity(CulturalObject):
     def _init_(self, institute: str, person: str= None, tool: str|set[str]|None = None, start: str = None, end: str = None):
-        super().__init__(title, date, owner, place)  #calling the parameters of the class CulturalObject
+        super().__init__()  #calling the parameters of the class CulturalObject
         if not isinstance(institute, str):
             raise ValueError("Institute must be a string for the Activity")
         if person is not None and not isinstance(person, str):
@@ -73,7 +73,7 @@ class Activity(CulturalObject):
 
 class Acquisition(Activity):
     def _init_(self, technique: str):
-        super().__init__(institute, person, tools, start, end) 
+        super().__init__() 
         if not isinstance(technique, str):
             raise ValueError("Acquisition.technique must be a string")
         self.technique = technique
