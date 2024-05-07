@@ -61,7 +61,7 @@ class CulturalObject(IdentifiableEntity):
         return self.place
 
     def getAuthors(self):
-        return self.authors
+        return self.author
 
 
 #definiamo le sottoclassi relative alla classe Cultrual Object   
