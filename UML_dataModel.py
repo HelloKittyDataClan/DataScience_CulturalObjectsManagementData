@@ -30,7 +30,7 @@ class IdentifiableEntity(object): #identifichiamo l'ID
 #___________________________CSV_________________________
 
 class CulturalObject(IdentifiableEntity):
-    def __init__(self, id:str, title:str, owner:str, place:str, date:str= None): #vado a definire title, date, owner e place del mio csv
+    def __init__(self, id:str, title:str, owner:str, place:str, date:str= None, author=None): #vado a definire title, date, owner e place del mio csv
         super().__init__(id)  #cosi facendo vado a richiamare l'ID della classe IdentifiableEntity
         if not isinstance(title, str):
             raise ValueError("Title must be a string for the CulturalObject")
@@ -40,11 +40,13 @@ class CulturalObject(IdentifiableEntity):
             raise ValueError("Place must be a string for the CulturalObject")
         if date is not None and not isinstance(date, str):
             raise ValueError("Date must be a string or None for the CulturalObject")
+        if author is not None and not isinstance(author, (Person, list)):
+            raise ValueError("CulturalObject author must be a Person, a list of Person, or None")
         self.title=title
         self.date=date
         self.owner=owner
         self.place=place
-        self.authors=[]
+        self.author = author if isinstance(author, list) else [author] if author is not None else []
         
 
     def getTitle(self):
@@ -60,13 +62,8 @@ class CulturalObject(IdentifiableEntity):
         return self.place
 
     def getAuthors(self):
-        return self.authors
+        return self.author
 
-    def addAuthor(self, author):
-        if isinstance(author, Person):
-            self.authors.append(author)
-        else:
-            raise ValueError("Author must be an instance of Person")
 
 #definiamo le sottoclassi relative alla classe Cultrual Object   
 class NauticalChart(CulturalObject):
