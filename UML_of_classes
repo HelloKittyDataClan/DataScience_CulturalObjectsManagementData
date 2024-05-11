@@ -1,23 +1,18 @@
 from pandas import read_csv, Series
+import pandas as dp
 from rdflib import RDF
 from rdflib import Graph, URIRef, RDF, Literal, Namespace
 
-class Handler: 
-    def __init__(self): 
-        self.dbPathOrUrl = "" 
+class Handler:
+    def __init__(self):
+        self.dbPathOrUrl = ""  # Inizializza il percorso o URL del database come stringa vuota
 
-    def getDbPathOrUrl(self): 
-        return self.dbPathOrUrl  
+    def getDbPathOrUrl(self):
+        return self.dbPathOrUrl  # Restituisci il percorso o URL del database
 
-    def setDbPathOrUrl(self, newpath): 
-        if len(newpath.split('.')) and newpath.split('.')[-1] == "db": 
-            self.dbPathOrUrl = newpath 
-            return True 
-        elif len(up.urlparse(newpath).scheme) and len(up.urlparse(newpath).netloc): 
-            self.dbPathOrUrl = newpath 
-            return True 
-        return False 
- 
+    def setDbPathOrUrl(self, new_path_or_url):
+        self.dbPathOrUrl = new_path_or_url  # Imposta il nuovo percorso o URL per il database     
+       
 
 class UploadHandler(Handler): 
     def __init__(self): 
