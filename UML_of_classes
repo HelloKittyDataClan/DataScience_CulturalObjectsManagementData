@@ -1,4 +1,5 @@
 from pandas import read_csv, Series
+import pandas as dp
 from rdflib import RDF
 from rdflib import Graph, URIRef, RDF, Literal, Namespace
 
