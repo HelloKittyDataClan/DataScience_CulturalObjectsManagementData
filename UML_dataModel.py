@@ -30,7 +30,7 @@ class IdentifiableEntity(object): #identifichiamo l'ID
 #___________________________CSV_________________________
 
 class CulturalObject(IdentifiableEntity):
-    def __init__(self, id:str, title:str, owner:str, place:str, date:str= None, author=None): #vado a definire title, date, owner e place del mio csv
+    def __init__(self, id:str, title:str, owner:str, place:str, date:str= None,authors:list=None): #vado a definire title, date, owner, place, Author  del mio csv 
         super().__init__(id)  #cosi facendo vado a richiamare l'ID della classe IdentifiableEntity
         if not isinstance(title, str):
             raise ValueError("Title must be a string for the CulturalObject")
@@ -40,21 +40,30 @@ class CulturalObject(IdentifiableEntity):
             raise ValueError("Place must be a string for the CulturalObject")
         if date is not None and not isinstance(date, str):
             raise ValueError("Date must be a string or None for the CulturalObject")
-        if author is not None and not isinstance(author, (Person, list)):
-            raise ValueError("CulturalObject author must be a Person, a list of Person, or None")
+        if authors is not None:
+            if not all(isinstance(author, Person) for author in authors):
+                raise ValueError("Authors must be instances of Person or None for the CulturalObject")    # garantisce che gli autori forniti per il nostro oggetto culturale siano parte della classe Person
+        
         self.title=title
         self.date=date
         self.owner=owner
         self.place=place
-        self.author = author if isinstance(author, list) else [author] if author is not None else []
-        
+        self.authors=[]    #lista vuota assegnata all'attributo authors 
 
+        if authors:
+            if isinstance(authors, Person):
+                self.authors.append(authors)
+            elif isinstance(authors, list):
+                self.authors.extend(authors)       #si occupa di aggiungere gli autori forniti all'oggetto culturale CulturalObject, gestendo sia il caso in cui sia fornito un singolo autore come istanza di Person, sia il caso in cui siano forniti più autori come lista di istanze di Person.
+   
     def getTitle(self):
         return self.title
 
     def getDate(self):
-        return self.date
-
+        if self.date:
+           return self.date
+        return None
+        
     def getOwner(self):
         return self.owner
 
@@ -62,7 +71,7 @@ class CulturalObject(IdentifiableEntity):
         return self.place
 
     def getAuthors(self):
-        return self.author
+        return self.authors
 
 
 #definiamo le sottoclassi relative alla classe Cultrual Object   
@@ -97,7 +106,6 @@ class Map(CulturalObject):
     pass
 
 
-#dopo aver avuto la parte .json, connettere has Author to Person e Activity refers to la classe Culture Object
 
 #____________________ JSON______________________
 
