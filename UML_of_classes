@@ -138,6 +138,19 @@ class MetadataUploadHandler(UploadHandler):
                 meta_graph.add((subject, RDF.type, Map))
 
             #add author
-
+Aggigunta autori
+if rowl"Author"]:
+#controlla se la cella autori non è vuota
+authors = rowl "Author"] split("*") # Separa gli autori se separati da "¿" for author name in authors: #iterazione su ogni autore estratto dalla lista degli autori
+# Genera un unico identificato per ogni autore
+author _id = author_name, lower(), replace(" ", "_")
+# Creare un URI per rappresentare l'autore
+author_uri = URIkef(base_url + "/author/" + author_id)
+# Aggiungere al grafo RDF il tipo di Person per l'autore
+meta_graph.add ((author_uri, RDF.type, Person))
+# aggiungere al grafo RDF il nome dell'autore
+meta_graph.add ((author_uri, name, Literal (author_name)))
+# connettere gli autori al cultural object
+meta_graph.add( (author_uri, author, subject))
 
 
