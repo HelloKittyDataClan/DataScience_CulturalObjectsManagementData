@@ -30,8 +30,8 @@ class MetadataUploadHandler(UploadHandler):
         schema = Namespace("http://schema.org/")
         foaf = Namespace("http://xmlns.com/foaf/0.1/")  # related to person
         my_git = Namespace("http://github.com/HelloKittyDataClan/DSexam")
-        ulan = Namespace("http://example.org/ulan/")
-        viaf = Namespace("http://example.org/viaf/")
+        ulan = Namespace ("http://github.com/HelloKittyDataClan/DSexam")        
+        viaf = Namespace ("http://github.com/HelloKittyDataClan/DSexam")
 
         # Create Graph
         meta_graph = Graph()
