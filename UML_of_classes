@@ -1,5 +1,5 @@
 from pandas import read_csv # type: ignore
-from rdflib import Graph, URIRef, Literal, Namespace, RDF # type: ignore
+from rdflib import Graph, URIRef, Literal, Namespace, RDF 
 
 import re
 
