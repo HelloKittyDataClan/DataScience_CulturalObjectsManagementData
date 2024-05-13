@@ -162,6 +162,6 @@ class MetadataUploadHandler(UploadHandler):
         # se l'autore non esiste crea un nuovo nodo 
         author_uri = URIRef(base_url + f"person-{self.person_counter}")
         graph.add((author_uri, RDF.type, foaf.Person))
-        graph.add((author_uri, name, Literal(author)))
+        graph.add((author_uri, foaf.name, Literal(author)))
         self.person_counter += 1
         return author_uri
