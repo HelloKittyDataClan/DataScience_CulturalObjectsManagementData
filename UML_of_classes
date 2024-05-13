@@ -3,16 +3,21 @@ import pandas as dp
 from rdflib import RDF
 from rdflib import Graph, URIRef, RDF, Literal, Namespace
 
-class Handler:
-    def __init__(self):
-        self.dbPathOrUrl = ""  # Inizializza il percorso o URL del database come stringa vuota
+class Handler: 
+    def __init__(self): 
+        self.dbPathOrUrl = "" 
 
-    def getDbPathOrUrl(self):
-        return self.dbPathOrUrl  # Restituisci il percorso o URL del database
+    def getDbPathOrUrl(self): 
+        return self.dbPathOrUrl  
 
-    def setDbPathOrUrl(self, new_path_or_url):
-        self.dbPathOrUrl = new_path_or_url  # Imposta il nuovo percorso o URL per il database     
-       
+    def setDbPathOrUrl(self, new_path_or_url): # Verifica se il nuovo percorso o URL è una stringa
+        if isinstance(new_path_or_url, str):
+            self.dbPathOrUrl = new_path_or_url # Aggiorna il percorso o URL del database con il nuovo valore
+            return self.dbPathOrUrl == new_path_or_url
+        else:
+            return False
+
+ 
 
 class UploadHandler(Handler): 
     def __init__(self): 
@@ -23,66 +28,66 @@ class UploadHandler(Handler):
 
 class MetadataUploadHandler(UploadHandler):
     def pushDataToDb(self, path):
+        # Define namespaces
+        schema = Namespace("http://schema.org/")
+        foaf = Namespace("http://xmlns.com/foaf/0.1/")  # related to person
+        my_git = Namespace("http://github.com/HelloKittyDataClan/DSexam")
 
-    #define namespaces
-    schema = Namespace("http://schema.org/")
-    foaf = Namespace ("http://xmlns.com/foaf/0.1/")  #related to person
-    my_git = Namespace ("http://github.com/HelloKittyDataClan/DSexam")
    
     #create Graph
-    meta_graph = Graph()
-    meta_graph.bind = ("schema", schema)
-    meta_graph.bind = ("foaf", schema)
-    meta_graph.bind = ("git", my_git)
+        meta_graph = Graph()
+        meta_graph.bind = ("schema", schema)
+        meta_graph.bind = ("foaf", schema)
+        meta_graph.bind = ("git", my_git)
 
   # attributes related to classes
-    title = URIRef("https://schema.org/title")
-    date = URIRef("https://schema.org/dateCreated")
-    owner = URIRef("http://github.com/HelloKittyDataClan/DSexam/owner")
-    place = URIRef("https://schema.org/itemLocation")
+        title = URIRef("https://schema.org/title")
+        date = URIRef("https://schema.org/dateCreated")
+        owner = URIRef("http://github.com/HelloKittyDataClan/DSexam/owner")
+        place = URIRef("https://schema.org/itemLocation")
 
-    identifier=URIRef("https://schema.org/identifier")
+        identifier=URIRef("https://schema.org/identifier")
 
     #relation with authors among classes
-    author=URIRef("https://schema.org/author")
+        author=URIRef("https://schema.org/author")
 
     #attributes related to the class Person
-    name=URIRef("<http://xmlns.com/foaf/0.1/name>")
+        name=URIRef("<http://xmlns.com/foaf/0.1/name>")
 
     #definie classes about Cultural Object
-    Person = URIRef(foaf.Person)
-    NauticalChart = URIRef(my_git.NauticalChart)
-    ManuscriptPlate = URIRef(my_git.ManuscriptPlate)
-    ManuscriptVolume = URIRef(my_git.ManuscriptVolume)
-    PrintedVolume = URIRef(my_git.PrintedVolume)
-    PrintedMaterial = URIRef(my_git.PrintedMaterial)
-    Herbarium = URIRef(my_git.Herbarium)
-    Specimen = URIRef(my_git.Specimen)
-    Painting = URIRef(my_git.Painting) 
-    Model = URIRef(my_git.Model)
-    Map = URIRef(schema.Map)
+        Person = URIRef(foaf.Person)
+        NauticalChart = URIRef(my_git.NauticalChart)
+        ManuscriptPlate = URIRef(my_git.ManuscriptPlate)
+        ManuscriptVolume = URIRef(my_git.ManuscriptVolume)
+        PrintedVolume = URIRef(my_git.PrintedVolume)
+        PrintedMaterial = URIRef(my_git.PrintedMaterial)
+        Herbarium = URIRef(my_git.Herbarium)
+        Specimen = URIRef(my_git.Specimen)
+        Painting = URIRef(my_git.Painting) 
+        Model = URIRef(my_git.Model)
+        Map = URIRef(schema.Map)
 
 # This is the string defining the base URL used to defined
 # the URLs of all the resources created from the data
-    base_url = Namespace ("http://github.com/HelloKittyDataClan/DSexam")
+        base_url = Namespace ("http://github.com/HelloKittyDataClan/DSexam")
 
-    venus=read_csv(".../data/meta.csv",
-                    path,
-                    keep_default_na=False,
-                        dtype={
-                        "Id": "string",
-                        "Title": "string",
-                        "Date" : "string",
-                        "Owner": "string",
-                        "Place": "string",
-                        "Type":"string"
-                        "Author": "string"
-                        }
-                )
+        venus = read_csv(
+            path,
+            keep_default_na=False,
+            dtype={
+                "Id": "string",
+                "Type": "string",
+                "Title": "string",
+                "Date": "string",
+                "Author": "string",
+                "Owner": "string",
+                "Place": "string",
+            },
+        )
 
-    for idx, row in venus.iterrows():   #mi restituisce un indice e un row che contiene i valori delle colonne
-        internal_id = "culturalobject-" + str(idx)  
-        subject = URIRef(base_url + internal_id)
+        for idx, row in venus.iterrows():   #mi restituisce un indice e un row che contiene i valori delle colonne
+            internal_id = "culturalobject-" + str(idx)  
+            subject = URIRef(base_url + internal_id)
 
         if row["Id"] != "":
             meta_graph.add(subject, identifier, Literal (row["Id"]))
@@ -160,7 +165,3 @@ class MetadataUploadHandler(UploadHandler):
         graph.add((author_uri, name, Literal(author)))
         self.person_counter += 1
         return author_uri
-
-
-
-
