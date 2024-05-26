@@ -1,80 +1,46 @@
-from pandas import read_csv # type: ignore
-from rdflib import Graph, URIRef, Literal, Namespace, RDF 
-
+from pandas import DataFrame, concat, read_csv, Series
+from sqlite3 import connect
+from rdflib import Namespace 
+from rdflib.namespace import FOAF
+from rdflib import Graph, URIRef, RDF, Namespace, Literal
+from rdflib.plugins.stores.sparqlstore import SPARQLUpdateStore
+import pandas as pd
+import csv
 import re
 
-class Handler: 
+class Handler:                             #Chiara
     def __init__(self): 
         self.dbPathOrUrl = "" 
 
     def getDbPathOrUrl(self): 
         return self.dbPathOrUrl  
-
-    def setDbPathOrUrl(self, new_path_or_url): 
-        if isinstance(new_path_or_url, str):
-            self.dbPathOrUrl = new_path_or_url 
-            return self.dbPathOrUrl == new_path_or_url
+    
+    def setDbPathOrUrl(self, pathOrUrl: str) -> bool:   
+        if isinstance(pathOrUrl, str):
+            self.dbPathOrUrl = pathOrUrl
+            return True
         else:
             return False
 
-class UploadHandler(Handler): 
-    def __init__(self): 
-        super().__init__() 
+class UploadHandler(Handler):
+    def __init__(self):
+        super().__init__()
 
-    def pushDataToDb(self): 
-        pass 
+    def pushDataToDb(self):
+        pass
 
-class MetadataUploadHandler(UploadHandler):
+class MetadataUploadHandler(UploadHandler):         #Chiara
+    def __init__(self):
+        self.dbPathOrUrl = ""
+
+
     def pushDataToDb(self, path):
-        # Define namespaces
-        schema = Namespace("http://schema.org/")
-        foaf = Namespace("http://xmlns.com/foaf/0.1/")  # related to person
-        my_git = Namespace("http://github.com/HelloKittyDataClan/DSexam")
-        ulan = Namespace ("http://github.com/HelloKittyDataClan/DSexam")        
-        viaf = Namespace ("http://github.com/HelloKittyDataClan/DSexam")
-
-        # Create Graph
-        meta_graph = Graph()
-        meta_graph.bind("schema", schema)
-        meta_graph.bind("foaf", foaf)
-        meta_graph.bind("git", my_git)
-        meta_graph.bind("ulan", ulan)
-        meta_graph.bind("viaf", viaf)
-
-        # Attributes related to classes
-        title = URIRef("https://schema.org/title")
-        date = URIRef("https://schema.org/dateCreated")
-        owner = URIRef("http://github.com/HelloKittyDataClan/DSexam/owner")
-        place = URIRef("https://schema.org/itemLocation")
-        identifier = URIRef("https://schema.org/identifier")
-
-        # Relation with authors among classes
-        author = URIRef("https://schema.org/author")
-
-        # Attributes related to the class Person
-        name = URIRef("http://xmlns.com/foaf/0.1/name")
-
-        # Define classes about Cultural Object
-        Person = URIRef(foaf.Person)
-        NauticalChart = URIRef(my_git.NauticalChart)
-        ManuscriptPlate = URIRef(my_git.ManuscriptPlate)
-        ManuscriptVolume = URIRef(my_git.ManuscriptVolume)
-        PrintedVolume = URIRef(my_git.PrintedVolume)
-        PrintedMaterial = URIRef(my_git.PrintedMaterial)
-        Herbarium = URIRef(my_git.Herbarium)
-        Specimen = URIRef(my_git.Specimen)
-        Painting = URIRef(my_git.Painting)
-        Model = URIRef(my_git.Model)
-        Map = URIRef(schema.Map)
-
-        # This is the string defining the base URL used to defined
-        # the URLs of all the resources created from the data
-        base_url = Namespace("http://github.com/HelloKittyDataClan/DSexam/")
-
-        venus = read_csv(
-            path,
-            keep_default_na=False,
-            dtype={
+                
+        #read the data from the csv file and store them into a dataframe --
+        venus = pd.read_csv(
+        path,
+        keep_default_na=False,
+        dtype={
                 "Id": "string",
                 "Type": "string",
                 "Title": "string",
@@ -84,81 +50,165 @@ class MetadataUploadHandler(UploadHandler):
                 "Place": "string",
             },
         )
+    
+        # Define namespaces
+        base_url = Namespace("http://github.com/HelloKittyDataClan/DSexam") #  #our base url --
+        db = Namespace ("http//dbpedia.org/resource/")
+        FOAF = Namespace("http://xmlns.com/foaf/0.1/")  # related to person--
+        schema = Namespace ("http://schema.org")
 
-        # Definire pattern per estrapolare autori 
-        author_pattern = re.compile(r"([^()]+)\s*\((ULAN:\d+|VIAF:\d+)\)")
+        # Create Graph
+        meta_graph = Graph()
+        meta_graph.bind("base_url", base_url)
+        meta_graph.bind("dpedia", db)
+        meta_graph.bind("FOAF", FOAF)
+        meta_graph.bind ("schema", schema)
+        
+      
+        # Define classes about Cultural Object ---
+        Person = URIRef(FOAF.Person)
+        NauticalChart = URIRef(base_url.NauticalChart)
+        ManuscriptPlate = URIRef(base_url.ManuscriptPlate)
+        ManuscriptVolume = URIRef(base_url.ManuscriptVolume)
+        PrintedVolume = URIRef(base_url.PrintedVolume)
+        PrintedMaterial = URIRef(base_url.PrintedMaterial)
+        Herbarium = URIRef(db.Herbarium)
+        Specimen = URIRef(base_url.Specimen)
+        Painting = URIRef(db.Painting)
+        Model = URIRef(db.Model)
+        Map = URIRef(db.Map)
 
-        for idx, row in venus.iterrows():   # mi restituisce un indice e un row che contiene i valori delle colonne
-            internal_id = "culturalobject-" + str(idx)  
-            subject = URIRef(base_url + internal_id)
+        # Attributes related to classes
+        title = URIRef(schema.title)
+        date = URIRef(schema.dataCreated)
+        place = URIRef(schema.itemLocation)
+        id = URIRef(schema.identifier)
+        owner = URIRef(base_url.owner)
 
-            if row["Id"] != "":
-                meta_graph.add(subject, identifier, Literal(row["Id"]))
+        # Relation with authors among classes
+        author = URIRef(schema.author)
 
-            if row["Title"] != "":
-                meta_graph.add(subject, title, Literal(row["Title"]))
+        # Attributes related to the class Person
+        name = URIRef(FOAF.name)
 
-            if row["Date"] != "":
-                meta_graph.add(subject, date, Literal(row["Date"]))
+ # Add to the graph the Cultural Object
+        for idx, row in venus.iterrows():
+            loc_id = "culturalobject-" + str(idx)
+            subj = URIRef(base_url+loc_id)
 
-            if row["Owner"] != "":
-                meta_graph.add(subject, owner, Literal(row["Owner"]))
+            #assign object id
+            meta_graph.add(subj, id, Literal(str(row["Id"])))
 
-            if row["Place"] != "":
-                meta_graph.add(subject, place, Literal(row["Place"]))
-
-            # Add to a Graph the Cultural Object
+            #assign a resource classes to the object
             if row["Type"] != "":
-                if row["Type"].lower() == "nautical chart":
-                    meta_graph.add((subject, RDF.type, NauticalChart))
+                if row["Type"].lower() == "Nautical chart":
+                    meta_graph.add((subj, RDF.type, NauticalChart))
+                elif row["Type"].lower() == "Manuscript plate":
+                    meta_graph.add((subj, RDF.type, ManuscriptPlate))
+                elif row["Type"].lower() == "Manuscript volume":
+                    meta_graph.add((subj, RDF.type, ManuscriptVolume))
+                elif row["Type"].lower() == "Printed volume":
+                    meta_graph.add((subj, RDF.type, PrintedVolume))
+                elif row["Type"].lower() == "Printed material":
+                    meta_graph.add((subj, RDF.type, PrintedMaterial))
+                elif row["Type"].lower() == "Herbarium":
+                    meta_graph.add((subj, RDF.type, Herbarium))
+                elif row["Type"].lower() == "Specimen":
+                     meta_graph.add((subj, RDF.type, Specimen))
+                elif row["Type"].lower() == "Painting":
+                    meta_graph.add((subj, RDF.type, Painting))
+                elif row["Type"].lower() == "Model":
+                    meta_graph.add((subj, RDF.type, Model))
+                elif row["Type"].lower() == "Map":
+                    meta_graph.add((subj, RDF.type, Map))
 
-                elif row["Type"].lower() == "manuscript plate":
-                    meta_graph.add((subject, RDF.type, ManuscriptPlate))
+            #assign title
+            if row["Title"] != "":
+                meta_graph.add(subj, title, Literal(str(row["Title"].strip()))) #.strip() if there are white spaces
 
-                elif row["Type"].lower() == "manuscript volume":
-                    meta_graph.add((subject, RDF.type, ManuscriptVolume))
+            #assign date
+            if row["Date"] != "":
+                meta_graph.add(subj, date, Literal(str(row["Date"])))
 
-                elif row["Type"].lower() == "printed volume":
-                    meta_graph.add((subject, RDF.type, PrintedVolume))
+            #assign owner
+            if row["Owner"] != "":
+                meta_graph.add(subj, owner, Literal(str(row["Owner"])))
 
-                elif row["Type"].lower() == "printed material":
-                    meta_graph.add((subject, RDF.type, PrintedMaterial))
+            #assign place
+            if row["Place"] != "":
+                meta_graph.add(subj, place, Literal(str(row["Place"])))
 
-                elif row["Type"].lower() == "herbarium":
-                    meta_graph.add((subject, RDF.type, Herbarium))
+        # Dictionaries to track authors and associated objects
+        authors_dict = dict()   
+        people_object_ids = dict()
+        people_counter = 0
 
-                elif row["Type"].lower() == "specimen":
-                    meta_graph.add((subject, RDF.type, Specimen))
-
-                elif row["Type"].lower() == "painting":
-                    meta_graph.add((subject, RDF.type, Painting))
-
-                elif row["Type"].lower() == "model":
-                    meta_graph.add((subject, RDF.type, Model))
-
-                elif row["Type"].lower() == "map":
-                    meta_graph.add((subject, RDF.type, Map))
-
+        # Iterate over each row in the DataFrame
+        for idx, row in venus.iterrows():
+            
             # Extract information about authors
-            if row["Author"] != "":      #se la cella author non è vuota 
-                matches = author_pattern.findall(row["Author"])
-                for match in matches:      #estrae nome autore e id 
-                    author_name, identifier_value = match
+            if row["Author"] != "":
+            # Split author string into a list of authors
+                author_list = row["Author"].split(";")
+                for author in author_list:
+                    author_stripped = author.strip()
+                    # Find the index of the opening parenthesis
+                    indx_for_split = author_stripped.index("(")
+                    # Extract the author name 
+                    author_name = author_stripped[:indx_for_split-1].strip()
+                    # Extract the id related to the author's name
+                    author_id = author_stripped[indx_for_split+1:-1].strip()
+                    object_id = row["Id"]
+                    
+                    if author_id in authors_dict.keys():
+                      author_uri = authors_dict[author_id]
+                      if object_id in people_object_ids.keys():
+                          people_object_ids[object_id].append(author_uri)
+                    else:
+                          people_object_ids[object_id] = [author_uri]  
+                else:
+                    loc_id = "Person/" + str(people_counter)
+                    subj = URIRef(base_url + loc_id)
 
-                    # Create URI for the author
-                    author_uri = URIRef(base_url + "author-" + author_name.lower().replace(" ", "-"))
+                 # adding to the graph the type, id and the name of the person
+                meta_graph.add((subj, RDF.type, Person))
+                meta_graph.add((subj, id, Literal(str(author_id))))
+                meta_graph.add((subj, name, Literal(str(author_name))))
+                
+                #to menage the author's duplicate and ensures that each author has a unique ID if the author ID is not already present in the authors_dict dictionary
+                authors_dict[author_id] = subj
+                if object_id in people_object_ids.keys():
+                    people_object_ids[object_id].append(subj)
+                else:
+                    people_object_ids[object_id] = [subj]
 
-                    # Add the author to the RDF graph
-                    meta_graph.add((author_uri, RDF.type, foaf.Person))
-                    meta_graph.add((author_uri, name, Literal(author_name.strip())))
-                    meta_graph.add((subject, schema.author, author_uri))
+                people_counter += 1
+  
+            if row["Author"] != "":
+                authors = people_object_ids[row["Id"]]
+                for auth in authors:
+                    meta_graph.add((subj, author, auth))
 
-                    # Add ULAN or VIAF identifier if present   #sono presenti entrambi 
-                    if identifier_value.startswith("ULAN:"):
-                        ulan_id = identifier_value.replace("ULAN:", "")
-                        meta_graph.add((author_uri, ulan.identifier, ulan[ulan_id]))
-                    elif identifier_value.startswith("VIAF:"):
-                        viaf_id = identifier_value.replace("VIAF:", "")
-                        meta_graph.add((author_uri, viaf.identifier, viaf[viaf_id]))
 
-        return meta_graph
+        # Store RDF data in SPARQL endpoint
+        #Utilizza una query SPARQL per contare direttamente il numero di triple nel database e memorizza il risultato in una variabile store_count.
+
+            store = SPARQLUpdateStore()
+       
+            store.open((self.dbPathOrUrl, self.dbPathOrUrl))
+
+            for triple in meta_graph.triples(None, None, None):
+                store.add(triple)
+
+
+        # Close the store connection
+            store.close()
+            return True
+    
+        except Exception as e:
+            print("The upload of data to Blazegraph failed: " + str(e))
+            return False
+    
+
+
+# java -server -Xmx1g -jar blazegraph.jar (terminal command to run Blazegraph)
