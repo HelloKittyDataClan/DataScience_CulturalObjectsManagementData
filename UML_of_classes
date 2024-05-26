@@ -1,10 +1,10 @@
 from pandas import DataFrame, concat, read_csv, Series
-from sqlite3 import connect
 from rdflib import Namespace 
 from rdflib.namespace import FOAF
 from rdflib import Graph, URIRef, RDF, Namespace, Literal
 from rdflib.plugins.stores.sparqlstore import SPARQLUpdateStore
 import pandas as pd
+import traceback
 import csv
 import re
 
@@ -58,11 +58,11 @@ class MetadataUploadHandler(UploadHandler):         #Chiara
         schema = Namespace ("http://schema.org")
 
         # Create Graph
-        meta_graph = Graph()
-        meta_graph.bind("base_url", base_url)
-        meta_graph.bind("dpedia", db)
-        meta_graph.bind("FOAF", FOAF)
-        meta_graph.bind ("schema", schema)
+        my_graph = Graph()
+        my_graph.bind("base_url", base_url)
+        my_graph.bind("dpedia", db)
+        my_graph.bind("FOAF", FOAF)
+        my_graph.bind ("schema", schema)
         
       
         # Define classes about Cultural Object ---
@@ -97,50 +97,50 @@ class MetadataUploadHandler(UploadHandler):         #Chiara
             subj = URIRef(base_url+loc_id)
 
             #assign object id
-            meta_graph.add(subj, id, Literal(str(row["Id"])))
+            my_graph.add(subj, id, Literal(str(row["Id"])))
 
             #assign a resource classes to the object
             if row["Type"] != "":
                 if row["Type"].lower() == "Nautical chart":
-                    meta_graph.add((subj, RDF.type, NauticalChart))
+                    my_graph.add((subj, RDF.type, NauticalChart))
                 elif row["Type"].lower() == "Manuscript plate":
-                    meta_graph.add((subj, RDF.type, ManuscriptPlate))
+                    my_graph.add((subj, RDF.type, ManuscriptPlate))
                 elif row["Type"].lower() == "Manuscript volume":
-                    meta_graph.add((subj, RDF.type, ManuscriptVolume))
+                    my_graph.add((subj, RDF.type, ManuscriptVolume))
                 elif row["Type"].lower() == "Printed volume":
-                    meta_graph.add((subj, RDF.type, PrintedVolume))
+                    my_graph.add((subj, RDF.type, PrintedVolume))
                 elif row["Type"].lower() == "Printed material":
-                    meta_graph.add((subj, RDF.type, PrintedMaterial))
+                    my_graph.add((subj, RDF.type, PrintedMaterial))
                 elif row["Type"].lower() == "Herbarium":
-                    meta_graph.add((subj, RDF.type, Herbarium))
+                    my_graph.add((subj, RDF.type, Herbarium))
                 elif row["Type"].lower() == "Specimen":
-                     meta_graph.add((subj, RDF.type, Specimen))
+                     my_graph.add((subj, RDF.type, Specimen))
                 elif row["Type"].lower() == "Painting":
-                    meta_graph.add((subj, RDF.type, Painting))
+                    my_graph.add((subj, RDF.type, Painting))
                 elif row["Type"].lower() == "Model":
-                    meta_graph.add((subj, RDF.type, Model))
+                    my_graph.add((subj, RDF.type, Model))
                 elif row["Type"].lower() == "Map":
-                    meta_graph.add((subj, RDF.type, Map))
+                    my_graph.add((subj, RDF.type, Map))
 
             #assign title
             if row["Title"] != "":
-                meta_graph.add(subj, title, Literal(str(row["Title"].strip()))) #.strip() if there are white spaces
+                my_graph.add(subj, title, Literal(str(row["Title"].strip()))) #.strip() if there are white spaces
 
             #assign date
             if row["Date"] != "":
-                meta_graph.add(subj, date, Literal(str(row["Date"])))
+                my_graph.add(subj, date, Literal(str(row["Date"])))
 
             #assign owner
             if row["Owner"] != "":
-                meta_graph.add(subj, owner, Literal(str(row["Owner"])))
+                my_graph.add(subj, owner, Literal(str(row["Owner"])))
 
             #assign place
             if row["Place"] != "":
-                meta_graph.add(subj, place, Literal(str(row["Place"])))
+                my_graph.add(subj, place, Literal(str(row["Place"])))
 
         # Dictionaries to track authors and associated objects
-        authors_dict = dict()   
-        people_object_ids = dict()
+        author_id_mapping = dict()   
+        object_mapping = dict()
         people_counter = 0
 
         # Iterate over each row in the DataFrame
@@ -160,54 +160,54 @@ class MetadataUploadHandler(UploadHandler):         #Chiara
                     author_id = author_stripped[indx_for_split+1:-1].strip()
                     object_id = row["Id"]
                     
-                    if author_id in authors_dict.keys():
-                      author_uri = authors_dict[author_id]
-                      if object_id in people_object_ids.keys():
-                          people_object_ids[object_id].append(author_uri)
+                    if author_id in author_id_mapping.keys():
+                      author_uri = author_id_mapping[author_id]
+                      if object_id in object_mapping.keys():
+                          object_mapping[object_id].append(author_uri)
                     else:
-                          people_object_ids[object_id] = [author_uri]  
+                          object_mapping[object_id] = [author_uri]  
                 else:
                     loc_id = "Person/" + str(people_counter)
                     subj = URIRef(base_url + loc_id)
 
                  # adding to the graph the type, id and the name of the person
-                meta_graph.add((subj, RDF.type, Person))
-                meta_graph.add((subj, id, Literal(str(author_id))))
-                meta_graph.add((subj, name, Literal(str(author_name))))
+                my_graph.add((subj, RDF.type, Person))
+                my_graph.add((subj, id, Literal(str(author_id))))
+                my_graph.add((subj, name, Literal(str(author_name))))
                 
                 #to menage the author's duplicate and ensures that each author has a unique ID if the author ID is not already present in the authors_dict dictionary
-                authors_dict[author_id] = subj
-                if object_id in people_object_ids.keys():
-                    people_object_ids[object_id].append(subj)
+                author_id_mapping[author_id] = subj
+                if object_id in object_mapping.keys():
+                    object_mapping[object_id].append(subj)
                 else:
-                    people_object_ids[object_id] = [subj]
+                    object_mapping[object_id] = [subj]
 
                 people_counter += 1
   
             if row["Author"] != "":
-                authors = people_object_ids[row["Id"]]
+                authors = author_id_mapping[row["Id"]]
                 for auth in authors:
-                    meta_graph.add((subj, author, auth))
+                    my_graph.add((subj, author, auth))
 
 
         # Store RDF data in SPARQL endpoint
         #Utilizza una query SPARQL per contare direttamente il numero di triple nel database e memorizza il risultato in una variabile store_count.
-
+        try:
             store = SPARQLUpdateStore()
-       
             store.open((self.dbPathOrUrl, self.dbPathOrUrl))
 
-            for triple in meta_graph.triples(None, None, None):
+            for triple in my_graph.triples(None, None, None):
                 store.add(triple)
 
-
-        # Close the store connection
+            # Chiudi la connessione allo store
             store.close()
             return True
-    
+
         except Exception as e:
             print("The upload of data to Blazegraph failed: " + str(e))
+            traceback.print_exc()  # Stampa l'intero traceback per ottenere più informazioni sull'errore
             return False
+
     
 
 
