@@ -204,8 +204,8 @@ class MetadataUploadHandler(UploadHandler):         #Chiara
             return True
 
         except Exception as e:
-            print("The upload of data to Blazegraph failed: " + str(e))
-            traceback.print_exc()  # Stampa l'intero traceback per ottenere più informazioni sull'errore
+            print("Failed to upload data to Blazegraph: " + str(e))
+            #traceback.print_exc()  # Stampa l'intero traceback per ottenere più informazioni sull'errore
             return False
 
     
