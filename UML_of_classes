@@ -8,6 +8,7 @@ import traceback
 import csv
 import re
 
+
 class Handler:                             #Chiara
     def __init__(self): 
         self.dbPathOrUrl = "" 
@@ -35,12 +36,12 @@ class MetadataUploadHandler(UploadHandler):         #Chiara
 
 
     def pushDataToDb(self, path):
-                
+        my_graph = Graph()
         #read the data from the csv file and store them into a dataframe --
-        venus = pd.read_csv(
-        path,
-        keep_default_na=False,
-        dtype={
+        venus = pd.read_csv("../meta.csv", 
+                path,
+                keep_default_na=False,
+                dtype={
                 "Id": "string",
                 "Type": "string",
                 "Title": "string",
@@ -52,13 +53,13 @@ class MetadataUploadHandler(UploadHandler):         #Chiara
         )
     
         # Define namespaces
-        base_url = Namespace("http://github.com/HelloKittyDataClan/DSexam") #  #our base url --
+        base_url = Namespace("http://github.com/HelloKittyDataClan/DSexam/") #  #our base url --
         db = Namespace ("http//dbpedia.org/resource/")
         FOAF = Namespace("http://xmlns.com/foaf/0.1/")  # related to person--
-        schema = Namespace ("http://schema.org")
+        schema = Namespace ("http://schema.org/")
 
         # Create Graph
-        my_graph = Graph()
+
         my_graph.bind("base_url", base_url)
         my_graph.bind("dpedia", db)
         my_graph.bind("FOAF", FOAF)
@@ -66,30 +67,30 @@ class MetadataUploadHandler(UploadHandler):         #Chiara
         
       
         # Define classes about Cultural Object ---
-        Person = URIRef(FOAF.Person)
-        NauticalChart = URIRef(base_url.NauticalChart)
-        ManuscriptPlate = URIRef(base_url.ManuscriptPlate)
-        ManuscriptVolume = URIRef(base_url.ManuscriptVolume)
-        PrintedVolume = URIRef(base_url.PrintedVolume)
-        PrintedMaterial = URIRef(base_url.PrintedMaterial)
-        Herbarium = URIRef(db.Herbarium)
-        Specimen = URIRef(base_url.Specimen)
-        Painting = URIRef(db.Painting)
-        Model = URIRef(db.Model)
-        Map = URIRef(db.Map)
+        Person = URIRef(FOAF + "Person")
+        NauticalChart = URIRef(base_url + "NauticalChart")
+        ManuscriptPlate = URIRef(base_url + "ManuscriptPlate")
+        ManuscriptVolume = URIRef(base_url + "ManuscriptVolume")
+        PrintedVolume = URIRef(base_url + "PrintedVolume")
+        PrintedMaterial = URIRef(base_url + "PrintedMaterial")
+        Herbarium = URIRef(db + "Herbarium")
+        Specimen = URIRef(base_url + "Specimen")
+        Painting = URIRef(db + "Painting")
+        Model = URIRef(db + "Model")
+        Map = URIRef(db + "Map")
 
         # Attributes related to classes
-        title = URIRef(schema.title)
-        date = URIRef(schema.dataCreated)
-        place = URIRef(schema.itemLocation)
-        id = URIRef(schema.identifier)
-        owner = URIRef(base_url.owner)
+        title = URIRef(schema + "title")
+        date = URIRef(schema + "dataCreated")
+        place = URIRef(schema + "itemLocation")
+        id = URIRef(schema + "identifier")
+        owner = URIRef(base_url + "owner")
 
         # Relation with authors among classes
-        author = URIRef(schema.author)
+        author = URIRef(schema + "author")
 
         # Attributes related to the class Person
-        name = URIRef(FOAF.name)
+        name = URIRef(FOAF + "name")
 
  # Add to the graph the Cultural Object
         for idx, row in venus.iterrows():
@@ -166,6 +167,7 @@ class MetadataUploadHandler(UploadHandler):         #Chiara
                     loc_author_id = "Person/" + str(people_counter)
                     subj_author = URIRef(base_url + loc_author_id)
 
+
                  # adding to the graph the type, id and the name of the person
                 my_graph.add((subj_author, RDF.type, Person))
                 my_graph.add((subj_author, id, Literal(str(author_id))))
@@ -198,6 +200,12 @@ class MetadataUploadHandler(UploadHandler):         #Chiara
             print("Failed to upload data to Blazegraph: " + str(e))
             #traceback.print_exc()  # Stampa l'intero traceback per ottenere più informazioni sull'errore
             return False
+
+
+# java -server -Xmx1g -jar blazegraph.jar (terminal command to run Blazegraph)
+
+
+
 
     
 
