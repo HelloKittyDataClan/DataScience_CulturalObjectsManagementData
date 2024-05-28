@@ -143,51 +143,42 @@ class MetadataUploadHandler(UploadHandler):         #Chiara
         object_mapping = dict()
         people_counter = 0
 
-        # Iterate over each row in the DataFrame
         for idx, row in venus.iterrows():
-            
             # Extract information about authors
             if row["Author"] != "":
-            # Split author string into a list of authors
-                author_list = row["Author"].split(";")
+                author_list = row["Author"].strip('\"').split(";")   # Split author string into a list of authors
                 for author in author_list:
-                    author_stripped = author.strip()
-                    # Find the index of the opening parenthesis
-                    indx_for_split = author_stripped.index("(")
-                    # Extract the author name 
-                    author_name = author_stripped[:indx_for_split-1].strip()
-                    # Extract the id related to the author's name
-                    author_id = author_stripped[indx_for_split+1:-1].strip()
-                    object_id = row["Id"]
+                    author_st = author.strip()
+                    indx_id = author_st.index("(")   # Find the index of the opening parenthesis 
+                    author_name = author_st[:indx_id-1]  # Extract the author name from the beginning of the string up to the opening parenthesis
+                    author_id = author_st[indx_id+1:-1]   # Extract the id related to the author's name
                     
+                    obj_id = row["Id"]
+                    # Check if the author ID is already in the author_id_mapping dictionary
                     if author_id in author_id_mapping.keys():
                       author_uri = author_id_mapping[author_id]
-                      if object_id in object_mapping.keys():
-                          object_mapping[object_id].append(author_uri)
+                      if obj_id in object_mapping.keys():
+                          object_mapping[obj_id].append(author_uri)  # append author uri
                     else:
-                          object_mapping[object_id] = [author_uri]  
+                          object_mapping[obj_id] = [author_uri]       # initialize a new list with the author URI
                 else:
-                    loc_id = "Person/" + str(people_counter)
-                    subj = URIRef(base_url + loc_id)
+                    #generate a new uri
+                    loc_author_id = "Person/" + str(people_counter)
+                    subj_author = URIRef(base_url + loc_author_id)
 
                  # adding to the graph the type, id and the name of the person
-                my_graph.add((subj, RDF.type, Person))
-                my_graph.add((subj, id, Literal(str(author_id))))
-                my_graph.add((subj, name, Literal(str(author_name))))
+                my_graph.add((subj_author, RDF.type, Person))
+                my_graph.add((subj_author, id, Literal(str(author_id))))
+                my_graph.add((subj_author, name, Literal(str(author_name))))
                 
-                #to menage the author's duplicate and ensures that each author has a unique ID if the author ID is not already present in the authors_dict dictionary
-                author_id_mapping[author_id] = subj
-                if object_id in object_mapping.keys():
-                    object_mapping[object_id].append(subj)
+               # Manage author duplicates and ensure each author has a unique ID
+                author_id_mapping[author_id] = subj_author
+                if obj_id in object_mapping.keys():
+                    object_mapping[obj_id].append(subj_author)
                 else:
-                    object_mapping[object_id] = [subj]
+                    object_mapping[obj_id] = [subj_author]
 
                 people_counter += 1
-  
-            if row["Author"] != "":
-                authors = author_id_mapping[row["Id"]]
-                for auth in authors:
-                    my_graph.add((subj, author, auth))
 
 
         # Store RDF data in SPARQL endpoint
