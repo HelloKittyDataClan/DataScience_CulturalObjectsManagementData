@@ -133,9 +133,9 @@ class MetadataUploadHandler(UploadHandler):  # Chiara
                 my_graph.add((subj, place, Literal(str(row["Place"]))))
 
         # Populating the graph with all the people
-        people_authority_ids = dict()
-        people_object_ids = dict()
-        people_number = 0
+        author_id_mapping = dict()   
+        object_mapping = dict()
+        people_counter = 0
 
         for idx, row in venus.iterrows():
             if row["Author"] != "":
@@ -148,24 +148,24 @@ class MetadataUploadHandler(UploadHandler):  # Chiara
                 
                         object_id = row["Id"]
 
-                        if author_id in people_authority_ids:
-                            person_uri = people_authority_ids[author_id]
+                        if author_id in author_id_mapping:
+                            person_uri = author_id_mapping[author_id]
                         else:
-                            local_id = "person-" + str(people_number)
+                            local_id = "person-" + str(people_counter)
                             person_uri = URIRef(base_url + local_id)
                             my_graph.add((person_uri, RDF.type, Person))
                             my_graph.add((person_uri, id, Literal(author_id)))
                             my_graph.add((person_uri, name, Literal(author_name)))
-                            people_authority_ids[author_id] = person_uri
-                            people_number += 1
+                            author_id_mapping[author_id] = person_uri
+                            people_counter += 1
 
-                        if object_id in people_object_ids:
-                            people_object_ids[object_id].add(person_uri)
+                        if object_id in object_mapping:
+                            object_mapping[object_id].add(person_uri)
                         else:
-                            people_object_ids[object_id] = {person_uri}
+                            object_mapping[object_id] = {person_uri}
 
                 # Aggiungi l'assegnazione degli autori al grafo
-                for object_id, authors in people_object_ids.items():
+                for object_id, authors in object_mapping.items():
                     for author_uri in authors:
                         my_graph.add((author_uri, relAuthor, URIRef(base_url + object_id)))
 
@@ -180,12 +180,12 @@ class MetadataUploadHandler(UploadHandler):  # Chiara
 
         store.close()
 
-grp_dbUrl = "http://192.168.1.8:9999/blazegraph/"
+grp_dbUrl = " http://192.168.1.8:9999/blazegraph/"
 metadata = MetadataUploadHandler()
 metadata.setDbPathOrUrl(grp_dbUrl)
 metadata.pushDataToDb("../data/meta.csv")
 
 
 # java -server -Xmx1g -jar blazegraph.jar (terminal command to run Blazegraph)
-
+ 
 
