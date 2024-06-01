@@ -7,15 +7,18 @@ import pandas as pd
 import csv
 
 
+from rdflib import Namespace, URIRef, RDF, Graph, Literal
+from rdflib.namespace import FOAF
+import pandas as pd
 
-class Handler:                             #Chiara
-    def __init__(self): 
-        self.dbPathOrUrl = "" 
+class Handler:  # Chiara
+    def __init__(self):
+        self.dbPathOrUrl = ""
 
-    def getDbPathOrUrl(self): 
-        return self.dbPathOrUrl  
-    
-    def setDbPathOrUrl(self, pathOrUrl: str) -> bool:   
+    def getDbPathOrUrl(self):
+        return self.dbPathOrUrl
+
+    def setDbPathOrUrl(self, pathOrUrl: str) -> bool:
         if isinstance(pathOrUrl, str):
             self.dbPathOrUrl = pathOrUrl
             return True
@@ -29,40 +32,37 @@ class UploadHandler(Handler):
     def pushDataToDb(self):
         pass
 
-class MetadataUploadHandler(UploadHandler):         #Chiara
+class MetadataUploadHandler(UploadHandler):  # Chiara
     def __init__(self):
-        self.dbPathOrUrl = ""
-
+        super().__init__()
 
     def pushDataToDb(self, path):
         my_graph = Graph()
-        #read the data from the csv file and store them into a dataframe --
-        venus = pd.read_csv("../data/meta.csv",
-                keep_default_na=False,
-                dtype={
-                "Id": "string",
-                "Type": "string",
-                "Title": "string",
-                "Date": "string",
-                "Author": "string",
-                "Owner": "string",
-                "Place": "string",
-            },
-        )
+        # Read the data from the csv file and store them into a dataframe
+        venus = pd.read_csv(path,
+                            keep_default_na=False,
+                            dtype={
+                                "Id": "string",
+                                "Type": "string",
+                                "Title": "string",
+                                "Date": "string",
+                                "Author": "string",
+                                "Owner": "string",
+                                "Place": "string",
+                            })
     
         # Define namespaces
-        base_url = Namespace("http://github.com/HelloKittyDataClan/DSexam/") #  #our base url --
-        db = Namespace ("http//dbpedia.org/resource/")
-        schema = Namespace ("http://schema.org/")
+        base_url = Namespace("http://github.com/HelloKittyDataClan/DSexam/")
+        db = Namespace("http//dbpedia.org/resource/")
+        schema = Namespace("http://schema.org/")
 
         # Create Graph
         my_graph.bind("base_url", base_url)
-        my_graph.bind("dpedia", db)
+        my_graph.bind("db", db)
         my_graph.bind("FOAF", FOAF)
-        my_graph.bind ("schema", schema)
+        my_graph.bind("schema", schema)
         
-      
-        # Define classes about Cultural Object ---
+        # Define classes about Cultural Object
         Person = URIRef(FOAF + "Person")
         NauticalChart = URIRef(base_url + "NauticalChart")
         ManuscriptPlate = URIRef(base_url + "ManuscriptPlate")
@@ -77,7 +77,7 @@ class MetadataUploadHandler(UploadHandler):         #Chiara
 
         # Attributes related to classes
         title = URIRef(schema + "title")
-        date = URIRef(schema + "dataCreated")
+        date = URIRef(schema + "dateCreated")
         place = URIRef(schema + "itemLocation")
         id = URIRef(schema + "identifier")
         owner = URIRef(base_url + "owner")
@@ -88,12 +88,12 @@ class MetadataUploadHandler(UploadHandler):         #Chiara
         # Attributes related to the class Person
         name = URIRef(FOAF + "name")
 
- # Add to the graph the Cultural Object
+        # Add to the graph the Cultural Object
         for idx, row in venus.iterrows():
             loc_id = "culturalobject-" + str(idx)
             subj = URIRef(base_url + loc_id)
 
-            #assign a resource classes to the object
+            # Assign a resource class to the object
             if row["Type"] != "":
                 if row["Type"].lower() == "nautical chart":
                     my_graph.add((subj, RDF.type, NauticalChart))
@@ -108,7 +108,7 @@ class MetadataUploadHandler(UploadHandler):         #Chiara
                 elif row["Type"].lower() == "herbarium":
                     my_graph.add((subj, RDF.type, Herbarium))
                 elif row["Type"].lower() == "specimen":
-                     my_graph.add((subj, RDF.type, Specimen))
+                    my_graph.add((subj, RDF.type, Specimen))
                 elif row["Type"].lower() == "painting":
                     my_graph.add((subj, RDF.type, Painting))
                 elif row["Type"].lower() == "model":
@@ -116,103 +116,76 @@ class MetadataUploadHandler(UploadHandler):         #Chiara
                 elif row["Type"].lower() == "map":
                     my_graph.add((subj, RDF.type, Map))
 
+            # Assign identifier
+            if row["Id"] != "":
+                my_graph.add((subj, id, Literal(str(row["Id"]))))
+            # Assign title
+            if row["Title"] != "":
+                my_graph.add((subj, title, Literal(str(row["Title"]))))
+            # Assign date
+            if row["Date"] != "":
+                my_graph.add((subj, date, Literal(str(row["Date"]))))
+            # Assign owner
+            if row["Owner"] != "":
+                my_graph.add((subj, owner, Literal(str(row["Owner"]))))
+            # Assign place
+            if row["Place"] != "":
+                my_graph.add((subj, place, Literal(str(row["Place"]))))
 
-        # Dictionaries to track authors and associated objects
-        author_id_mapping = dict()   
-        object_mapping = dict()
-        people_counter = 0
+        # Populating the graph with all the people
+        people_authority_ids = dict()
+        people_object_ids = dict()
+        people_number = 0
 
         for idx, row in venus.iterrows():
-            # Extract information about authors
             if row["Author"] != "":
-                author_list = row["Author"].strip('\"').split(";")   # Split author string into a list of authors
+                author_list = row["Author"].split(";")
                 for author in author_list:
-                    author_st = author.strip()
-                    indx_id = author_st.find("(")   # Find the index of the opening parenthesis 
-                    author_name = author_st[:indx_id-1]  # Extract the author name from the beginning of the string up to the opening parenthesis
-                    author_id = author_st[(indx_id+1):-1]   # Extract the id related to the author's name
-                    
-                    obj_id = row["Id"]
-                    # Check if the author ID is already in the author_id_mapping dictionary
-                    if author_id in author_id_mapping.keys():
-                      author_uri = author_id_mapping[author_id]
-                      if obj_id in object_mapping.keys():
-                        object_mapping[obj_id].append(author_uri)  # append author uri
-                      else:
-                          object_mapping[obj_id] = [author_uri]       # initialize a new list with the author URI
-                    else:
-                    #generate a new uri
-                        loc_author_id = "Person/" + str(people_counter)
-                        subj_author = URIRef(base_url + loc_author_id)
-
-
-                 # adding to the graph the type, id and the name of the person
-                my_graph.add((subj_author, RDF.type, Person))
-                my_graph.add((subj_author, id, Literal(str(author_id))))
-                my_graph.add((subj_author, name, Literal(str(author_name))))
+                    if "(" in author and ")" in author:
+                        split_index = author.index("(")
+                        author_name = author[:split_index - 1].strip()
+                        author_id = author[split_index + 1:-1].strip()
                 
-               # Manage author duplicates and ensure each author has a unique ID
-                author_id_mapping[author_id] = subj_author
-                if obj_id in object_mapping.keys():
-                    object_mapping[obj_id].append(subj_author)
-                else:
-                    object_mapping[obj_id] = [subj_author]
+                        object_id = row["Id"]
 
-                people_counter += 1
+                        if author_id in people_authority_ids:
+                            person_uri = people_authority_ids[author_id]
+                        else:
+                            local_id = "person-" + str(people_number)
+                            person_uri = URIRef(base_url + local_id)
+                            my_graph.add((person_uri, RDF.type, Person))
+                            my_graph.add((person_uri, id, Literal(author_id)))
+                            my_graph.add((person_uri, name, Literal(author_name)))
+                            people_authority_ids[author_id] = person_uri
+                            people_number += 1
 
-                #assign identifier
-                if row["Id"] != "":
-                    my_graph.add((subj, id, Literal(str(row["Id"]))))
-            #assign title
-                if row["Title"] != "":
-                    my_graph.add((subj, title, Literal(str(row["Title"]))))
+                        if object_id in people_object_ids:
+                            people_object_ids[object_id].add(person_uri)
+                        else:
+                            people_object_ids[object_id] = {person_uri}
 
-            #assign date
-                if row["Date"] != "":
-                    my_graph.add((subj, date, Literal(str(row["Date"]))))
-
-            #assign owner
-                if row["Owner"] != "":
-                    my_graph.add((subj, owner, Literal(str(row["Owner"]))))
-
-            #assign place
-                if row["Place"] != "":
-                    my_graph.add((subj, place, Literal(str(row["Place"]))))
-            
-            #assign author
-                if row["Author"] != "":
-                    authors = object_mapping[row["Id"]]
-                    for auth in authors:
-                        my_graph.add((subj, relAuthor, auth))
+                # Aggiungi l'assegnazione degli autori al grafo
+                for object_id, authors in people_object_ids.items():
+                    for author_uri in authors:
+                        my_graph.add((author_uri, relAuthor, URIRef(base_url + object_id)))
 
         # Store RDF data in SPARQL endpoint
-        #Utilizza una query SPARQL per contare direttamente il numero di triple nel database e memorizza il risultato in una variabile store_count.
-        
-            store = SPARQLUpdateStore()
+        store = SPARQLUpdateStore()
+        endpoint = self.getDbPathOrUrl() + "sparql"
 
-            endpoint = self.getDbPathOrUrl() + "sparql" 
+        store.open((endpoint, endpoint))  # First parameter reading data, second write database
 
-            store.open((endpoint, endpoint))  #first paramenter reading data, second write database
+        for triple in my_graph.triples((None, None, None)):
+            store.add(triple)
 
-            for triple in my_graph.triples((None, None, None)):
-                store.add(triple)
+        store.close()
 
-            store.close()
-            
-
-        '''except Exception as e:
-            print("Failed to upload data to Blazegraph: " + str(e))
-            #traceback.print_exc()  # Stampa l'intero traceback per ottenere più informazioni sull'errore
-            return False'''
-        
-
-
-grp_dbUrl = "http://192.168.1.163:9999/blazegraph/"
+grp_dbUrl = "http://192.168.1.8:9999/blazegraph/"
 metadata = MetadataUploadHandler()
 metadata.setDbPathOrUrl(grp_dbUrl)
 metadata.pushDataToDb("../data/meta.csv")
 
-# java -server -Xmx1g -jar blazegraph.jar (terminal command to run Blazegraph)
 
+# java -server -Xmx1g -jar blazegraph.jar (terminal command to run Blazegraph)
 
 
