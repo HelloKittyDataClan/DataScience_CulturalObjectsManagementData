@@ -187,5 +187,154 @@ metadata.pushDataToDb("../data/meta.csv")
 
 
 # java -server -Xmx1g -jar blazegraph.jar (terminal command to run Blazegraph)
+
+#Bea
+class MetadataQueryHandler:
+    def __init__(self, dbPathOrUrl):
+        self.dbPathOrUrl = dbPathOrUrl
+    
+    def execute_sparql_query(self, query):
+        sparql = SPARQLWrapper(self.dbPathOrUrl)
+        sparql.setReturnFormat(SPARQLWrapper.CSV)
+        sparql.setQuery(query)
+        try:
+            ret = sparql.queryAndConvert()
+        except Exception as e:
+            print(f"Error executing SPARQL query: {e}")
+            return pd.DataFrame()  # Return empty DataFrame on error
+        
+        df_columns = ret["head"]["vars"]
+        df = pd.DataFrame(columns=df_columns)
+        for row in ret["results"]["bindings"]:
+            row_dict = {column: row[column]["value"] for column in df_columns if column in row}
+            df = df.append(row_dict, ignore_index=True)
+        return df.replace(np.nan, " ")
+    
+    def getById(self, id):
+        person_query = f"""
+        SELECT DISTINCT ?uri ?name ?id WHERE {{
+            ?object <https://schema.org/author> ?uri.
+            ?uri <https://schema.org/name> ?name.
+            ?uri <https://schema.org/identifier> ?id.
+            ?uri <https://schema.org/identifier> '{id}'.
+        }}"""
+        
+        object_query = f"""
+        SELECT DISTINCT ?object ?id ?type ?title ?date ?owner ?place ?author ?author_name ?author_id WHERE {{
+            ?object <https://schema.org/identifier> ?id.
+            ?object <https://schema.org/identifier> '{id}'.
+            ?object <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> ?type.
+            ?object <https://schema.org/name> ?title.
+            ?object <https://schema.org/copyrightHolder> ?owner.
+            ?object <https://schema.org/spatial> ?place.
+            OPTIONAL{{ ?object <https://schema.org/dateCreated> ?date. }}
+            OPTIONAL{{ 
+                ?object <https://schema.org/author> ?author.
+                ?author <https://schema.org/name> ?author_name.
+                ?author <https://schema.org/identifier> ?author_id.
+            }}
+        }}"""
+        
+        person_df = self.execute_sparql_query(person_query)
+        object_df = self.execute_sparql_query(object_query)
+        
+        if not object_df.empty:
+            return object_df
+        return person_df
+
+   
+
+def getAllPeople(self): # Definisci la tua query SPARQL
+    query = """
+    SELECT DISTINCT ?object ?id ?type ?title ?date ?owner ?place ?author ?author_name ?author_id 
+    WHERE {{ 
+        ?object <https://schema.org/identifier> ?id. 
+        ?object <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> ?type. 
+        ?object <https://schema.org/name> ?title. 
+        ?object <https://schema.org/copyrightHolder> ?owner. 
+        ?object <https://schema.org/spatial> ?place. 
+        OPTIONAL{{ ?object <https://schema.org/dateCreated> ?date. }} 
+        OPTIONAL{{ 
+            ?object <https://schema.org/author> ?author. 
+            ?author <https://schema.org/name> ?author_name. 
+            ?author <https://schema.org/identifier> ?author_id.
+        }}
+    }}
+    """
+
+   
+
+    def getAllCulturalHeritageObjects(self):
+         query = """
+            SELECT DISTINCT ?object ?id ?type ?title ?date ?owner ?place ?author ?author_name ?author_id 
+            WHERE { 
+                ?object <https://schema.org/identifier> ?id. 
+                ?object <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> ?type. 
+                ?object <https://schema.org/name> ?title. 
+                ?object <https://schema.org/copyrightHolder> ?owner. 
+                ?object <https://schema.org/spatial> ?place. 
+            OPTIONAL{ ?object <https://schema.org/dateCreated> ?date. } 
+            OPTIONAL{ 
+                ?object <https://schema.org/author> ?author. 
+                ?author <https://schema.org/name> ?author_name. 
+                ?author <https://schema.org/identifier> ?author_id.
+            }}
+            """
+    return self.execute_sparql_query(query)
+
+
+    def getAuthorsOfCulturalHeritageObject(self, object_id):
+        query = f"""
+        SELECT DISTINCT ?author ?author_name ?author_id 
+        WHERE {{ 
+            ?object <https://schema.org/identifier> '{object_id}'. 
+            ?object <https://schema.org/author> ?author. 
+            ?author <https://schema.org/name> ?author_name. 
+            ?author <https://schema.org/identifier> ?author_id. 
+        }}"""
+        return self.execute_sparql_query(query)
+    
+
+    def getAuthorsOfCulturalHeritageObject(self, object_id: str): 
+        query = """
+            SELECT DISTINCT ?author ?author_name ?author_id 
+            WHERE { 
+                ?object <https://schema.org/identifier> '%s'. 
+                ?object <https://schema.org/author> ?author. 
+                ?author <https://schema.org/name> ?author_name. 
+                ?author <https://schema.org/identifier> ?author_id. 
+                }""" % object_id
+        return self.execute_sparql_query(query)
+
+
+
+    def getCulturalHeritageObjectsAuthoredBy(self, personId):
+        query = f"""
+    SELECT DISTINCT ?object ?id ?type ?title ?date ?owner ?place ?author ?author_name ?author_id 
+    WHERE {{ 
+        ?object <https://schema.org/identifier> ?id. 
+        ?object <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> ?type. 
+        ?object <https://schema.org/name> ?title. 
+        ?object <https://schema.org/copyrightHolder> ?owner. 
+        ?object <https://schema.org/spatial> ?place. 
+        ?object <https://schema.org/author> ?author. 
+        ?author <https://schema.org/name> ?author_name.
+        ?author <https://schema.org/identifier> ?author_id.
+        OPTIONAL{{ ?object <https://schema.org/dateCreated> ?date. }}
+        FILTER CONTAINS(?author_id, '{personId}')
+    }}"""
+        return self.execute_sparql_query(query)
+    
+
+# Configurazione dell'URL di Blazegraph per me
+blazegraph_url = "http://192.168.1.152:8080/blazegraph/namespace/kb/sparql"
+
+
+# Creare un'istanza di MetadataQueryHandler per me
+grp_endpoint = "http://192.168.1.152:8080/blazegraph/namespace/kb/sparql"
+sparql_query_handler = MetadataQueryHandler(dbPathOrUrl=grp_endpoint)
+
+
+
  
 
