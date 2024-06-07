@@ -3,7 +3,7 @@ from rdflib.namespace import FOAF
 from rdflib import Graph, URIRef, RDF, Namespace, Literal
 from rdflib.plugins.stores.sparqlstore import SPARQLUpdateStore
 import pandas as pd
-
+import numpy as np
 import csv
 
 
