@@ -8,6 +8,7 @@ import numpy as np
 import csv
 
 
+
 from rdflib import Namespace, URIRef, RDF, Graph, Literal
 from rdflib.namespace import FOAF
 import pandas as pd
@@ -87,7 +88,7 @@ class MetadataUploadHandler(UploadHandler):  # Chiara
         relAuthor = URIRef(schema + "author")
 
         # Attributes related to the class Person
-        name = URIRef(FOAF + "name")
+        name = URIRef(FOAF + "name") #uri di FOAF http://xmlns.com/foaf/0.1/
 
         # Add to the graph the Cultural Object
         for idx, row in venus.iterrows():
@@ -181,15 +182,7 @@ class MetadataUploadHandler(UploadHandler):  # Chiara
 
         store.close()
 
-grp_dbUrl = " http://192.168.1.8:9999/blazegraph/"
-metadata = MetadataUploadHandler()
-metadata.setDbPathOrUrl(grp_dbUrl)
-metadata.pushDataToDb("../data/meta.csv")
 
-
-# java -server -Xmx1g -jar blazegraph.jar (terminal command to run Blazegraph)
-
-#Bea
 class MetadataQueryHandler:
     def __init__(self, dbPathOrUrl):
         self.dbPathOrUrl = dbPathOrUrl
@@ -265,8 +258,8 @@ def getAllPeople(self): # Definisci la tua query SPARQL
 
    
 
-    def getAllCulturalHeritageObjects(self):
-         query = """
+def getAllCulturalHeritageObjects(self):
+        query = """
             SELECT DISTINCT ?object ?id ?type ?title ?date ?owner ?place ?author ?author_name ?author_id 
             WHERE { 
                 ?object <https://schema.org/identifier> ?id. 
@@ -281,10 +274,10 @@ def getAllPeople(self): # Definisci la tua query SPARQL
                 ?author <https://schema.org/identifier> ?author_id.
             }}
             """
-    return self.execute_sparql_query(query)
+        return self.execute_sparql_query(query)
 
 
-    def getAuthorsOfCulturalHeritageObject(self, object_id):
+def getAuthorsOfCulturalHeritageObject(self, object_id):
         query = f"""
         SELECT DISTINCT ?author ?author_name ?author_id 
         WHERE {{ 
@@ -296,7 +289,7 @@ def getAllPeople(self): # Definisci la tua query SPARQL
         return self.execute_sparql_query(query)
     
 
-    def getAuthorsOfCulturalHeritageObject(self, object_id: str): 
+def getAuthorsOfCulturalHeritageObject(self, object_id: str): 
         query = """
             SELECT DISTINCT ?author ?author_name ?author_id 
             WHERE { 
@@ -309,7 +302,7 @@ def getAllPeople(self): # Definisci la tua query SPARQL
 
 
 
-    def getCulturalHeritageObjectsAuthoredBy(self, personId):
+def getCulturalHeritageObjectsAuthoredBy(self, personId):
         query = f"""
     SELECT DISTINCT ?object ?id ?type ?title ?date ?owner ?place ?author ?author_name ?author_id 
     WHERE {{ 
@@ -325,17 +318,13 @@ def getAllPeople(self): # Definisci la tua query SPARQL
         FILTER CONTAINS(?author_id, '{personId}')
     }}"""
         return self.execute_sparql_query(query)
+
     
-
-# Configurazione dell'URL di Blazegraph per me
-blazegraph_url = "http://192.168.1.152:8080/blazegraph/namespace/kb/sparql"
-
-
-# Creare un'istanza di MetadataQueryHandler per me
-grp_endpoint = "http://192.168.1.152:8080/blazegraph/namespace/kb/sparql"
-sparql_query_handler = MetadataQueryHandler(dbPathOrUrl=grp_endpoint)
+grp_dbUrl = "http://192.168.1.60:9999/blazegraph/"
+metadata = MetadataUploadHandler()
+metadata.setDbPathOrUrl(grp_dbUrl)
+metadata.pushDataToDb("data/meta.csv")
 
 
-
- 
+# java -server -Xmx1g -jar blazegraph.jar (terminal command to run Blazegraph)
 
