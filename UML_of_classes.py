@@ -90,11 +90,12 @@ class MetadataUploadHandler(UploadHandler):  # Chiara
         # Attributes related to the class Person
         name = URIRef(FOAF + "name") #uri di FOAF http://xmlns.com/foaf/0.1/
 
+        
+        
         # Add to the graph the Cultural Object
         for idx, row in venus.iterrows():
             loc_id = "culturalobject-" + str(idx)
             subj = URIRef(base_url + loc_id)
-
             # Assign a resource class to the object
             if row["Type"] != "":
                 if row["Type"].lower() == "nautical chart":
@@ -133,6 +134,8 @@ class MetadataUploadHandler(UploadHandler):  # Chiara
             # Assign place
             if row["Place"] != "":
                 my_graph.add((subj, place, Literal(str(row["Place"]))))
+        
+       
 
         # Populating the graph with all the people
         author_id_mapping = dict()   
@@ -166,10 +169,10 @@ class MetadataUploadHandler(UploadHandler):  # Chiara
                         else:
                             object_mapping[object_id] = {person_uri}
 
-                # Aggiungi l'assegnazione degli autori al grafo
-                for object_id, authors in object_mapping.items():
-                    for author_uri in authors:
-                        my_graph.add((author_uri, relAuthor, URIRef(base_url + object_id)))
+            # Aggiungi l'assegnazione degli autori al grafo
+            for object_id, authors in object_mapping.items():
+                for author_uri in authors:
+                    my_graph.add((author_uri, relAuthor, URIRef(base_url + object_id)))
 
         # Store RDF data in SPARQL endpoint
         store = SPARQLUpdateStore()
@@ -320,7 +323,7 @@ def getCulturalHeritageObjectsAuthoredBy(self, personId):
         return self.execute_sparql_query(query)
 
     
-grp_dbUrl = "http://192.168.1.60:9999/blazegraph/"
+grp_dbUrl = "http://10.201.7.42:9999/blazegraph/"
 metadata = MetadataUploadHandler()
 metadata.setDbPathOrUrl(grp_dbUrl)
 metadata.pushDataToDb("data/meta.csv")
