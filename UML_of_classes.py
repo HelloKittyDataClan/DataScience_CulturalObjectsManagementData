@@ -55,7 +55,7 @@ class MetadataUploadHandler(UploadHandler):  # Chiara
     
         # Define namespaces
         base_url = Namespace("http://github.com/HelloKittyDataClan/DSexam/")
-        db = Namespace("http//dbpedia.org/resource/")
+        db = Namespace("https://dbpedia.org/property/")
         schema = Namespace("http://schema.org/")
 
         # Create Graph
@@ -91,11 +91,13 @@ class MetadataUploadHandler(UploadHandler):  # Chiara
         name = URIRef(FOAF + "name") #uri di FOAF http://xmlns.com/foaf/0.1/
 
         
-        
         # Add to the graph the Cultural Object
         for idx, row in venus.iterrows():
             loc_id = "culturalobject-" + str(idx)
             subj = URIRef(base_url + loc_id)
+            if row["Id"] != "":
+                my_graph.add((subj, id, Literal(str(row["Id"]))))
+            
             # Assign a resource class to the object
             if row["Type"] != "":
                 if row["Type"].lower() == "nautical chart":
@@ -118,10 +120,8 @@ class MetadataUploadHandler(UploadHandler):  # Chiara
                     my_graph.add((subj, RDF.type, Model))
                 elif row["Type"].lower() == "map":
                     my_graph.add((subj, RDF.type, Map))
-
-            # Assign identifier
-            if row["Id"] != "":
-                my_graph.add((subj, id, Literal(str(row["Id"]))))
+                
+     
             # Assign title
             if row["Title"] != "":
                 my_graph.add((subj, title, Literal(str(row["Title"]))))
@@ -135,8 +135,6 @@ class MetadataUploadHandler(UploadHandler):  # Chiara
             if row["Place"] != "":
                 my_graph.add((subj, place, Literal(str(row["Place"]))))
         
-       
-
         # Populating the graph with all the people
         author_id_mapping = dict()   
         object_mapping = dict()
@@ -185,8 +183,19 @@ class MetadataUploadHandler(UploadHandler):  # Chiara
 
         store.close()
 
+'''prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>
+prefix schema: <http://schema.org/>
+prefix FOAF: <http://xmlns.com/foaf/0.1/>
+       
 
-class MetadataQueryHandler:
+SELECT ?culturalObjectURI ?culturalObjectId
+WHERE {
+            ?culturalObjectURI rdf:type ?type .
+            FILTER(?type != FOAF:Person)
+            ?culturalObjectURI schema:identifier ?culturalObjectId .
+        }'''
+
+class MetadataQueryHandler:             #Bea
     def __init__(self, dbPathOrUrl):
         self.dbPathOrUrl = dbPathOrUrl
     
@@ -323,7 +332,7 @@ def getCulturalHeritageObjectsAuthoredBy(self, personId):
         return self.execute_sparql_query(query)
 
     
-grp_dbUrl = "http://10.201.7.42:9999/blazegraph/"
+grp_dbUrl = " http://192.168.1.60:9999/blazegraph/"
 metadata = MetadataUploadHandler()
 metadata.setDbPathOrUrl(grp_dbUrl)
 metadata.pushDataToDb("data/meta.csv")
