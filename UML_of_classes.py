@@ -6,12 +6,10 @@ import SPARQLWrapper
 import pandas as pd
 import numpy as np
 import csv
-
-
-
+import urllib.request
 from rdflib import Namespace, URIRef, RDF, Graph, Literal
 from rdflib.namespace import FOAF
-import pandas as pd
+
 
 class Handler:  # Chiara
     def __init__(self):
@@ -198,4 +196,222 @@ WHERE {
 
 
 
-#parte Bea manca getCulturalHeritageObjectsAuthoredBy(personid: string) : DataFrame la carico domattina quando la revisiono perchè mo so stanca 
+#parte Bea manca getCulturalHeritageObjectsAuthoredBy(personid: string) : DataFrame la carico domattina quando la revisiono perchè mo so stanca e sta pure mezza disordinata sta implementazione 
+
+class MetadataQueryHandler(Handler):
+    def __init__(self, db_url):
+        super().__init__()
+        self.dbPathOrUrl = db_url
+
+    
+    
+
+
+    def getById(self, id):
+        object_query = f"""
+            SELECT DISTINCT ?object ?id ?type ?title ?date ?owner ?place ?author ?author_name ?author_id 
+            WHERE {{
+                ?object <http://schema.org/identifier> "{id}" ;
+                        a ?type ;
+                        <http://schema.org/title> ?title ;
+                        <http://schema.org/dateCreated> ?date ;
+                        <http://github.com/HelloKittyDataClan/DSexam/owner> ?owner ;
+                        <http://schema.org/itemLocation> ?place .
+                OPTIONAL {{
+                    ?object <http://schema.org/author> ?author.
+                    ?author <http://xmlns.com/foaf/0.1/name> ?author_name.
+                    ?author <http://schema.org/identifier> ?author_id.
+                }}
+            }}
+        """
+        results = self.execute_sparql_query(object_query)
+        return pd.DataFrame(results["results"]["bindings"])
+    
+
+
+    def getAllPeople(self):
+        grp_dbUrl = "http://192.168.1.153:9999/blazegraph/"   
+        metadata = MetadataUploadHandler()
+        metadata.setDbPathOrUrl(grp_dbUrl)
+        metadata.pushDataToDb("~/Downloads/Data Science/meta.csv")
+        query = """
+        PREFIX FOAF: <http://xmlns.com/foaf/0.1/>
+        PREFIX schema: <http://schema.org/>
+
+        SELECT DISTINCT ?uri ?author_name ?author_id
+        WHERE {
+            ?person a FOAF:Person ;
+                    schema:identifier ?author_id ;
+                    FOAF:name ?author_name .
+        }
+        """
+        results = self.execute_sparql_query(query)
+        return pd.DataFrame(results["results"]["bindings"])
+    
+    
+    def getAllCulturalHeritageObjects(self):
+        grp_dbUrl = "http://192.168.1.153:9999/blazegraph/"   
+        metadata = MetadataUploadHandler()
+        metadata.setDbPathOrUrl(grp_dbUrl)
+        metadata.pushDataToDb("~/Downloads/Data Science/meta.csv")
+        query = """
+        PREFIX schema: <http://schema.org/>
+        SELECT ?object ?id ?title ?date ?owner ?place WHERE {
+            ?object a ?type ;
+                    schema:identifier ?id ;
+                    schema:title ?title ;
+                    schema:dateCreated ?date ;
+                    <http://github.com/HelloKittyDataClan/DSexam/owner> ?owner ;
+                    schema:itemLocation ?place .
+            FILTER (?type IN (
+                <http://github.com/HelloKittyDataClan/DSexam/NauticalChart>,
+                <http://github.com/HelloKittyDataClan/DSexam/ManuscriptPlate>,
+                <http://github.com/HelloKittyDataClan/DSexam/ManuscriptVolume>,
+                <http://github.com/HelloKittyDataClan/DSexam/PrintedVolume>,
+                <http://github.com/HelloKittyDataClan/DSexam/PrintedMaterial>,
+                <https://dbpedia.org/property/Herbarium>,
+                <http://github.com/HelloKittyDataClan/DSexam/Specimen>,
+                <https://dbpedia.org/property/Painting>,
+                <https://dbpedia.org/property/Model>,
+                <https://dbpedia.org/property/Map>
+            ))
+        }
+        """
+
+        results = self.execute_sparql_query(query)
+
+        objects = []
+        for result in results["results"]["bindings"]:
+            obj = {}
+            obj["object"] = result["object"]["value"] if "object" in result else None
+            obj["id"] = result["id"]["value"] if "id" in result else None
+            obj["title"] = result["title"]["value"] if "title" in result else None
+            obj["date"] = result["date"]["value"] if "date" in result else None
+            obj["owner"] = result["owner"]["value"] if "owner" in result else None
+            obj["place"] = result["place"]["value"] if "place" in result else None
+            objects.append(obj)
+
+        return pd.DataFrame(objects)
+    
+
+    def execute_sparql_query(self, query):
+        sparql = SPARQLWrapper(self.dbPathOrUrl + "sparql")
+        sparql.setReturnFormat(JSON)
+        sparql.setQuery(query)
+        ret = sparql.queryAndConvert()
+        df_columns = ret["head"]["vars"]
+        df = pd.DataFrame(columns=df_columns)
+        for row in ret["results"]["bindings"]:
+            row_dict = {}
+            for column in df_columns:
+                if column in row:
+                    row_dict[column] = row[column]["value"]
+                else:
+                    row_dict[column] = None
+            df = df.append(row_dict, ignore_index=True)
+        return df
+    
+
+    
+    def getAuthorsOfCulturalHeritageObject(self, object_id: str) -> pd.DataFrame:
+        grp_dbUrl = "http://192.168.1.153:9999/blazegraph/"   
+        metadata = MetadataUploadHandler()
+        metadata.setDbPathOrUrl(grp_dbUrl)
+        metadata.pushDataToDb("~/Downloads/Data Science/meta.csv")
+        print("Object ID:", object_id)
+        query = f"""
+        PREFIX base_url: <http://github.com/HelloKittyDataClan/DSexam/>
+        PREFIX schema: <http://schema.org/>
+        PREFIX foaf: <http://xmlns.com/foaf/0.1/>
+
+        SELECT ?author ?authorName ?entity
+        WHERE {{
+            ?author schema:author ?entity .
+            ?author foaf:name ?authorName .
+            ?author schema:identifier ?authorID
+        }}
+        """
+    
+        df = self.execute_sparql_query(query)
+        if df.empty:
+         return pd.DataFrame()
+
+        df['author'] = df['author'].apply(lambda x: x.rsplit('/', 1)[-1])
+
+        all_dfs = []
+        for author in df['author']:
+            query_1 = f"""
+            PREFIX base_url: <http://github.com/HelloKittyDataClan/DSexam/>
+            PREFIX schema: <http://schema.org/>
+            PREFIX foaf: <http://xmlns.com/foaf/0.1/>
+
+            SELECT ?authorName ?authorID ?entity
+            WHERE {{
+                ?author schema:author ?entity .
+                OPTIONAL {{ ?author foaf:name ?authorName }}
+                OPTIONAL {{ ?author schema:identifier ?authorID }}
+            }}
+
+            """
+
+            df_main = self.query_sparql(query_1)
+            if df_main.empty:
+             continue
+
+            df_main['entity'] = df_main['entity'].apply(lambda x: x.rsplit('/', 1)[-1])
+            df_main = df_main.rename(columns={'name': 'authorName', 'authorID': 'authorID'})  # Rinomina le colonne
+            all_dfs.append(df_main)
+
+        if all_dfs:
+            return pd.concat(all_dfs, ignore_index=True)
+        else:
+            return pd.DataFrame()
+
+
+    def getCulturalHeritageObjectsAuthoredBy(self, personid: str) -> pd.DataFrame:
+        endpoint_url = self.getDbPathOrUrl() + "sparql"
+        sparql = SPARQLWrapper(endpoint_url)
+
+        query = f"""
+        PREFIX base_url: <http://github.com/HelloKittyDataClan/DSexam/>
+        PREFIX schema: <http://schema.org/>
+        PREFIX FOAF: <http://xmlns.com/foaf/0.1/>
+
+        SELECT ?objectId ?title ?date ?place ?owner
+        WHERE {{
+            ?person FOAF:identifier "{personid}" .
+            ?person schema:author ?culturalObject .
+            ?culturalObject schema:identifier ?objectId .
+            OPTIONAL {{ ?culturalObject schema:title ?title . }}
+            OPTIONAL {{ ?culturalObject schema:dateCreated ?date . }}
+            OPTIONAL {{ ?culturalObject schema:itemLocation ?place . }}
+            OPTIONAL {{ ?culturalObject base_url:owner ?owner . }}
+        }}
+        """
+        
+        print("SPARQL Query:")
+        print(query)
+
+        sparql.setQuery(query)
+        sparql.setReturnFormat(JSON)
+        
+        try:
+            results = sparql.query().convert()
+            print("Query Results:")
+            print(results)
+        except Exception as e:
+            print(f"Error executing query: {e}")
+            return pd.DataFrame()
+
+        objects = []
+        for result in results["results"]["bindings"]:
+            obj = {
+                "objectId": result["objectId"]["value"],
+                "title": result.get("title", {}).get("value", ""),
+                "date": result.get("date", {}).get("value", ""),
+                "place": result.get("place", {}).get("value", ""),
+                "owner": result.get("owner", {}).get("value", "")
+            }
+            objects.append(obj)
+
+        df = pd.DataFrame(objects)    
