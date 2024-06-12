@@ -2,13 +2,12 @@ from rdflib import Namespace
 from rdflib.namespace import FOAF
 from rdflib import Graph, URIRef, RDF, Namespace, Literal
 from rdflib.plugins.stores.sparqlstore import SPARQLUpdateStore
-import SPARQLWrapper
+from SPARQLWrapper import SPARQLWrapper, JSON
 import pandas as pd
 import numpy as np
 import csv
 import urllib.request
-from rdflib import Namespace, URIRef, RDF, Graph, Literal
-from rdflib.namespace import FOAF
+
 
 
 class Handler:  # Chiara
