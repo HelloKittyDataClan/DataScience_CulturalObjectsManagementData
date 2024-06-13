@@ -121,9 +121,9 @@ class Person(IdentifiableEntity):
         return self.name
 
 #Creation of class Activity that refers to CulturalObject
-class Activity(CulturalObject):                                 #---->>>questo qui non è figlio di culturalObject, GUARDARE FRECCIA!!
-    def _init_(self, id:str, institute: str, person: str= None, tool: str|set[str]|None = None, start: str = None, end: str = None):        #---->>>id non esistente
-        super().__init__(id, "", "")  # Initialize ID, title, owner, place (replace with appropriate values)
+class Activity():                               
+    def _init_(self, institute: str, person: str= None, tool: str|set[str]|None = None, start: str = None, end: str = None): 
+        super().__init__()  # Initialize (replace with appropriate values)
         if not isinstance(institute, str):
             raise ValueError("Institute must be a string for the Activity")
         if person is not None and not isinstance(person, str):
@@ -136,7 +136,7 @@ class Activity(CulturalObject):                                 #---->>>questo q
             raise ValueError("End Date must be a string or None for the Activity")
         self.institute = institute
         self.person = person
-        self.tool = {}               #---->>>non controllare, rimane vuoto, ti ridà un dizionario vuoto
+        self.tool = tool         
         self.start = start
         self.end = end
         
@@ -164,8 +164,8 @@ class Activity(CulturalObject):                                 #---->>>questo q
 #Subclass of Activity just with technique parameter
 
 class Acquisition(Activity):
-    def _init_(self, id: str, technique: str):      #---->>>l'id non esiste!!
-        super().__init__(id) 
+    def _init_(self, technique: str):   
+        super().__init__() 
         if not isinstance(technique, str):
             raise ValueError("Acquisition.technique must be a string")
         self.technique = technique
