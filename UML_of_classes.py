@@ -167,7 +167,7 @@ class MetadataUploadHandler(UploadHandler):  # Chiara
             # Aggiungi l'assegnazione degli autori al grafo
             for object_id, authors in object_mapping.items():
                 for author_uri in authors:
-                    my_graph.add((author_uri, relAuthor, URIRef(base_url + object_id)))
+                    my_graph.add((URIRef(base_url + object_id), relAuthor, author_uri))  #modifica leggi alla fine del codice 
 
         # Store RDF data in SPARQL endpoint
         store = SPARQLUpdateStore()
@@ -195,8 +195,9 @@ WHERE {
 
 
 
-#parte Bea manca getCulturalHeritageObjectsAuthoredBy(personid: string) : DataFrame la carico domattina quando la revisiono perchè mo so stanca e sta pure mezza disordinata sta implementazione 
+# java -server -Xmx1g -jar blazegraph.jar (terminal command to run Blazegraph)
 
+#Bea
 class MetadataQueryHandler(Handler):
     def __init__(self, db_url):
         super().__init__()
@@ -224,7 +225,11 @@ class MetadataQueryHandler(Handler):
             }}
         """
         results = self.execute_sparql_query(object_query)
-        return pd.DataFrame(results["results"]["bindings"])
+        return pd.DataFrame([{
+            var: binding[var]['value'] if var in binding else None
+            for var in binding
+        } for binding in results["results"]["bindings"]])
+
     
 
 
@@ -248,31 +253,35 @@ class MetadataQueryHandler(Handler):
         return pd.DataFrame(results["results"]["bindings"])
     
     
-    def getAllCulturalHeritageObjects(self):
-        grp_dbUrl = "http://192.168.1.153:9999/blazegraph/"   
+    def getAllCulturalHeritageObjects(self) -> pd.DataFrame:
+        grp_dbUrl = "http://192.168.1.153:9999/blazegraph/"
         metadata = MetadataUploadHandler()
         metadata.setDbPathOrUrl(grp_dbUrl)
         metadata.pushDataToDb("~/Downloads/Data Science/meta.csv")
+    
         query = """
         PREFIX schema: <http://schema.org/>
-        SELECT ?object ?id ?title ?date ?owner ?place WHERE {
+        PREFIX base_url: <http://github.com/HelloKittyDataClan/DSexam/>
+    
+        SELECT ?object ?id ?type ?title ?date ?owner ?place WHERE {
             ?object a ?type ;
                     schema:identifier ?id ;
                     schema:title ?title ;
                     schema:dateCreated ?date ;
-                    <http://github.com/HelloKittyDataClan/DSexam/owner> ?owner ;
+                    base_url:owner ?owner ;
                     schema:itemLocation ?place .
+        
             FILTER (?type IN (
-                <http://github.com/HelloKittyDataClan/DSexam/NauticalChart>,
-                <http://github.com/HelloKittyDataClan/DSexam/ManuscriptPlate>,
-                <http://github.com/HelloKittyDataClan/DSexam/ManuscriptVolume>,
-                <http://github.com/HelloKittyDataClan/DSexam/PrintedVolume>,
-                <http://github.com/HelloKittyDataClan/DSexam/PrintedMaterial>,
-                <https://dbpedia.org/property/Herbarium>,
-                <http://github.com/HelloKittyDataClan/DSexam/Specimen>,
-                <https://dbpedia.org/property/Painting>,
-                <https://dbpedia.org/property/Model>,
-                <https://dbpedia.org/property/Map>
+                base_url:NauticalChart,
+                base_url:ManuscriptPlate,
+                base_url:ManuscriptVolume,
+                base_url:PrintedVolume,
+                base_url:PrintedMaterial,
+                base_url:Herbarium,
+                base_url:Specimen,
+                base_url:Painting,
+                base_url:Model,
+                base_url:Map
             ))
         }
         """
@@ -284,6 +293,7 @@ class MetadataQueryHandler(Handler):
             obj = {}
             obj["object"] = result["object"]["value"] if "object" in result else None
             obj["id"] = result["id"]["value"] if "id" in result else None
+            obj["type"] = result["type"]["value"] if "type" in result else None
             obj["title"] = result["title"]["value"] if "title" in result else None
             obj["date"] = result["date"]["value"] if "date" in result else None
             obj["owner"] = result["owner"]["value"] if "owner" in result else None
@@ -291,6 +301,7 @@ class MetadataQueryHandler(Handler):
             objects.append(obj)
 
         return pd.DataFrame(objects)
+
     
 
     def execute_sparql_query(self, query):
@@ -311,13 +322,13 @@ class MetadataQueryHandler(Handler):
         return df
     
 
-    
+
     def getAuthorsOfCulturalHeritageObject(self, object_id: str) -> pd.DataFrame:
         grp_dbUrl = "http://192.168.1.153:9999/blazegraph/"   
         metadata = MetadataUploadHandler()
         metadata.setDbPathOrUrl(grp_dbUrl)
         metadata.pushDataToDb("~/Downloads/Data Science/meta.csv")
-        print("Object ID:", object_id)
+        
         query = f"""
         PREFIX base_url: <http://github.com/HelloKittyDataClan/DSexam/>
         PREFIX schema: <http://schema.org/>
@@ -365,52 +376,55 @@ class MetadataQueryHandler(Handler):
             return pd.concat(all_dfs, ignore_index=True)
         else:
             return pd.DataFrame()
-
-
-    def getCulturalHeritageObjectsAuthoredBy(self, personid: str) -> pd.DataFrame:
-        endpoint_url = self.getDbPathOrUrl() + "sparql"
-        sparql = SPARQLWrapper(endpoint_url)
-
-        query = f"""
-        PREFIX base_url: <http://github.com/HelloKittyDataClan/DSexam/>
-        PREFIX schema: <http://schema.org/>
-        PREFIX FOAF: <http://xmlns.com/foaf/0.1/>
-
-        SELECT ?objectId ?title ?date ?place ?owner
-        WHERE {{
-            ?person FOAF:identifier "{personid}" .
-            ?person schema:author ?culturalObject .
-            ?culturalObject schema:identifier ?objectId .
-            OPTIONAL {{ ?culturalObject schema:title ?title . }}
-            OPTIONAL {{ ?culturalObject schema:dateCreated ?date . }}
-            OPTIONAL {{ ?culturalObject schema:itemLocation ?place . }}
-            OPTIONAL {{ ?culturalObject base_url:owner ?owner . }}
-        }}
-        """
         
-        print("SPARQL Query:")
-        print(query)
+    def getCulturalHeritageObjectsAuthoredBy(personid: str) -> pd.DataFrame:
+        grp_dbUrl = "http://192.168.1.153:9999/blazegraph/"   
+        metadata = MetadataUploadHandler()
+        metadata.setDbPathOrUrl(grp_dbUrl)
+        metadata.pushDataToDb("~/Downloads/Data Science/meta.csv")
+        sparql = SPARQLWrapper(grp_dbUrl + "sparql")
 
+        query = """
+        PREFIX schema: <http://schema.org/>
+        PREFIX foaf: <http://xmlns.com/foaf/0.1/>
+        PREFIX base_url: <http://github.com/HelloKittyDataClan/DSexam/>
+
+        SELECT ?author ?author_name ?object ?object_id ?title ?date ?owner ?place
+        WHERE {
+            ?author a foaf:Person ;
+                    schema:identifier "%s" ;
+                    foaf:name ?author_name .
+        
+            OPTIONAL {
+                ?object base_url:owner ?owner ;
+                        schema:identifier ?object_id ;
+                        schema:title ?title .
+            
+                OPTIONAL { ?object schema:dateCreated ?date }
+                OPTIONAL { ?object schema:itemLocation ?place }
+                OPTIONAL { ?object schema:author ?author }
+            }
+        }
+        """ % (personid)
         sparql.setQuery(query)
         sparql.setReturnFormat(JSON)
-        
-        try:
-            results = sparql.query().convert()
-            print("Query Results:")
-            print(results)
-        except Exception as e:
-            print(f"Error executing query: {e}")
-            return pd.DataFrame()
-
-        objects = []
+        results = sparql.query().convert()
+    
+    
+        columns = ["author", "author_name", "object", "object_id", "title", "date", "owner", "place"]
+        rows = []
+    
         for result in results["results"]["bindings"]:
-            obj = {
-                "objectId": result["objectId"]["value"],
-                "title": result.get("title", {}).get("value", ""),
-                "date": result.get("date", {}).get("value", ""),
-                "place": result.get("place", {}).get("value", ""),
-                "owner": result.get("owner", {}).get("value", "")
-            }
-            objects.append(obj)
+            row = []
+        for col in columns:
+            row.append(result.get(col, {}).get("value"))
+        rows.append(row)
+    
+        df = pd.DataFrame(rows, columns=columns)
+    
+        return df
+  
+    
 
-        df = pd.DataFrame(objects)    
+
+#ho sostituito con questa my_graph.add((URIRef(base_url + object_id), relAuthor, author_uri)) perchè stiamo gestendo l'associazione degli autori agli oggetti culturali all'interno di un ciclo che attraversa i dati del dataframe venus. quindi my_graph.add((URIRef(base_url + object_id), relAuthor, author_uri)) associa  gli autori agli oggetti culturali che hai identificato attraverso object_id
