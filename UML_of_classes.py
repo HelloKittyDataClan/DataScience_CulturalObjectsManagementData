@@ -197,6 +197,7 @@ WHERE {
 
 # java -server -Xmx1g -jar blazegraph.jar (terminal command to run Blazegraph)
 
+
 #Bea
 class MetadataQueryHandler(Handler):
     def __init__(self, db_url):
@@ -234,26 +235,45 @@ class MetadataQueryHandler(Handler):
 
 
     def getAllPeople(self):
+        grp_dbUrl = "http://192.168.1.153:9999/blazegraph/"   
+        metadata = MetadataUploadHandler()
+        metadata.setDbPathOrUrl(grp_dbUrl)
+        metadata.pushDataToDb("~/Downloads/Data Science/meta.csv")
         query = """
         PREFIX FOAF: <http://xmlns.com/foaf/0.1/>
         PREFIX schema: <http://schema.org/>
 
         SELECT DISTINCT ?uri ?author_name ?author_id
         WHERE {
-            ?person a FOAF:Person ;
-                    schema:identifier ?author_id ;
-                    FOAF:name ?author_name .
+            ?uri a FOAF:Person ;
+                 schema:identifier ?author_id ;
+                 FOAF:name ?author_name .
         }
         """
         results = self.execute_sparql_query(query)
-        return pd.DataFrame(results["results"]["bindings"])
+        rows = []
+        for result in results["results"]["bindings"]:
+            row = {
+                "uri": result["uri"]["value"],
+                "author_name": result["author_name"]["value"],
+                "author_id": result["author_id"]["value"]
+            }
+            rows.append(row)
+    
+        df = pd.DataFrame(rows)
+        return df
     
     
     def getAllCulturalHeritageObjects(self) -> pd.DataFrame:
+        grp_dbUrl = "http://192.168.1.153:9999/blazegraph/"
+        metadata = MetadataUploadHandler()
+        metadata.setDbPathOrUrl(grp_dbUrl)
+        metadata.pushDataToDb("~/Downloads/Data Science/meta.csv")
+    
         query = """
         PREFIX schema: <http://schema.org/>
         PREFIX base_url: <http://github.com/HelloKittyDataClan/DSexam/>
-    
+        PREFIX db: <https://dbpedia.org/property/>
         SELECT ?object ?id ?type ?title ?date ?owner ?place WHERE {
             ?object a ?type ;
                     schema:identifier ?id ;
@@ -268,11 +288,11 @@ class MetadataQueryHandler(Handler):
                 base_url:ManuscriptVolume,
                 base_url:PrintedVolume,
                 base_url:PrintedMaterial,
-                base_url:Herbarium,
+                db:Herbarium,
                 base_url:Specimen,
-                base_url:Painting,
-                base_url:Model,
-                base_url:Map
+                db:Painting,
+                db:Model,
+                db:Map
             ))
         }
         """
@@ -312,15 +332,19 @@ class MetadataQueryHandler(Handler):
             df = df.append(row_dict, ignore_index=True)
         return df
     
-
-
     def getAuthorsOfCulturalHeritageObject(self, object_id: str) -> pd.DataFrame:
+        # Carica i metadati nel database (assicurati di implementare pushDataToDb correttamente)
+        metadata = MetadataUploadHandler()
+        metadata.setDbPathOrUrl("http://192.168.1.153:9999/blazegraph/")
+        metadata.pushDataToDb("~/Downloads/Data Science/meta.csv")
+        
+        # Query principale per ottenere gli autori
         query = f"""
         PREFIX base_url: <http://github.com/HelloKittyDataClan/DSexam/>
         PREFIX schema: <http://schema.org/>
         PREFIX foaf: <http://xmlns.com/foaf/0.1/>
 
-        SELECT ?author ?authorName ?entity
+        SELECT DISTINCT ?author ?authorName ?entity
         WHERE {{
             ?author schema:author ?entity .
             ?author foaf:name ?authorName .
@@ -330,40 +354,65 @@ class MetadataQueryHandler(Handler):
     
         df = self.execute_sparql_query(query)
         if df.empty:
-         return pd.DataFrame()
+            return pd.DataFrame()
 
         df['author'] = df['author'].apply(lambda x: x.rsplit('/', 1)[-1])
-
-        all_dfs = []
-        for author in df['author']:
-            query_1 = f"""
-            PREFIX base_url: <http://github.com/HelloKittyDataClan/DSexam/>
-            PREFIX schema: <http://schema.org/>
-            PREFIX foaf: <http://xmlns.com/foaf/0.1/>
-
-            SELECT ?authorName ?authorID ?entity
-            WHERE {{
-                ?author schema:author ?entity .
-                OPTIONAL {{ ?author foaf:name ?authorName }}
-                OPTIONAL {{ ?author schema:identifier ?authorID }}
-            }}
-
-            """
-
-            df_main = self.query_sparql(query_1)
-            if df_main.empty:
-             continue
-
-            df_main['entity'] = df_main['entity'].apply(lambda x: x.rsplit('/', 1)[-1])
-            df_main = df_main.rename(columns={'name': 'authorName', 'authorID': 'authorID'})  # Rinomina le colonne
-            all_dfs.append(df_main)
-
-        if all_dfs:
-            return pd.concat(all_dfs, ignore_index=True)
-        else:
-            return pd.DataFrame()
         
+        data = []
+        authors_seen = set()
+        columns = ['author', 'authorName', 'authorID']
+        
+        # Prima parte della query già gestita
+        
+        for index, row in df.iterrows():
+            author_uri = row['author']
+            author_name = row['authorName']
+            author_id = row['entity'].rsplit('/', 1)[-1]
+
+            # Controlla se l'autore è già stato visto
+            if author_uri not in authors_seen:
+                data.append([author_uri, author_name, author_id])
+                authors_seen.add(author_uri)
+        
+        # Seconda parte della query per gestire eventuali duplicati di autori non visti nella prima query
+        query_2 = f"""
+        PREFIX base_url: <http://github.com/HelloKittyDataClan/DSexam/>
+        PREFIX schema: <http://schema.org/>
+        PREFIX foaf: <http://xmlns.com/foaf/0.1/>
+
+        SELECT DISTINCT ?authorName ?authorID ?entity
+        WHERE {{
+            ?author schema:author ?entity .
+            OPTIONAL {{ ?author foaf:name ?authorName }}
+            OPTIONAL {{ ?author schema:identifier ?authorID }}
+        }}
+        """
+
+        df_2 = self.execute_sparql_query(query_2)
+        df_2['author'] = df_2['entity'].apply(lambda x: x.rsplit('/', 1)[-1])
+        df_2 = df_2.rename(columns={'authorName': 'authorName', 'authorID': 'authorID'})
+        
+        for index, row in df_2.iterrows():
+            author_uri = row['author']
+            author_name = row['authorName']
+            author_id = row['entity'].rsplit('/', 1)[-1]
+
+            if author_uri not in authors_seen:
+                data.append([author_uri, author_name, author_id])
+                authors_seen.add(author_uri)
+        
+        # Crea il DataFrame finale
+        df_final = pd.DataFrame(data, columns=columns)
+        return df_final
+
+
+
+    
     def getCulturalHeritageObjectsAuthoredBy(personid: str) -> pd.DataFrame:
+        grp_dbUrl = "http://192.168.1.153:9999/blazegraph/"   
+        metadata = MetadataUploadHandler()
+        metadata.setDbPathOrUrl(grp_dbUrl)
+        metadata.pushDataToDb("~/Downloads/Data Science/meta.csv")
         sparql = SPARQLWrapper(grp_dbUrl + "sparql")
 
         query = """
@@ -407,12 +456,7 @@ class MetadataQueryHandler(Handler):
         return df
   
     
- grp_dbUrl = ""   
-        metadata = MetadataUploadHandler()
-        metadata.setDbPathOrUrl(grp_dbUrl)
-        metadata.pushDataToDb("")
 
-
-
+    
 
 
