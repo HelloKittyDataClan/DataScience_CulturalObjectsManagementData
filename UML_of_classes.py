@@ -222,34 +222,27 @@ class MetadataQueryHandler(Handler):
     def __init__(self, db_url):
         super().__init__()
         self.dbPathOrUrl = db_url
+        
 
-    
+    def execute_sparql_query(self, query):
+        sparql = SPARQLWrapper(self.dbPathOrUrl + "sparql")
+        sparql.setReturnFormat(JSON)
+        sparql.setQuery(query)
+        ret = sparql.queryAndConvert()
+        df_columns = ret["head"]["vars"]
+        df = pd.DataFrame(columns=df_columns)
+        for row in ret["results"]["bindings"]:
+            row_dict = {}
+            for column in df_columns:
+                if column in row:
+                    row_dict[column] = row[column]["value"]
+                else:
+                    row_dict[column] = None
+            df = df.append(row_dict, ignore_index=True)
+        return df
 
 
-    def getById(self, id):
-        object_query = f"""
-            SELECT DISTINCT ?object ?id ?type ?title ?date ?owner ?place ?author ?author_name ?author_id 
-            WHERE {{
-                ?object <http://schema.org/identifier> "{id}" ;
-                        a ?type ;
-                        <http://schema.org/title> ?title ;
-                        <http://schema.org/dateCreated> ?date ;
-                        <http://github.com/HelloKittyDataClan/DSexam/owner> ?owner ;
-                        <http://schema.org/itemLocation> ?place .
-                OPTIONAL {{
-                    ?object <http://schema.org/author> ?author.
-                    ?author <http://xmlns.com/foaf/0.1/name> ?author_name.
-                    ?author <http://schema.org/identifier> ?author_id.
-                }}
-            }}
-        """
-        results = self.execute_sparql_query(object_query)
-        return pd.DataFrame([{
-            var: binding[var]['value'] if var in binding else None
-            for var in binding
-        } for binding in results["results"]["bindings"]])
 
-    
 
 
     def getAllPeople(self):
@@ -279,19 +272,22 @@ class MetadataQueryHandler(Handler):
     
     
     def getAllCulturalHeritageObjects(self) -> pd.DataFrame:
-    
         query = """
         PREFIX schema: <http://schema.org/>
         PREFIX base_url: <http://github.com/HelloKittyDataClan/DSexam/>
         PREFIX db: <https://dbpedia.org/property/>
-        SELECT ?object ?id ?type ?title ?date ?owner ?place WHERE {
+
+        SELECT DISTINCT ?object ?id ?type ?title ?date ?author ?owner ?place
+        WHERE {
             ?object a ?type ;
                     schema:identifier ?id ;
                     schema:title ?title ;
                     schema:dateCreated ?date ;
                     base_url:owner ?owner ;
                     schema:itemLocation ?place .
-        
+    
+            OPTIONAL { ?object schema:author ?author . }
+
             FILTER (?type IN (
                 base_url:NauticalChart,
                 base_url:ManuscriptPlate,
@@ -305,6 +301,7 @@ class MetadataQueryHandler(Handler):
                 db:Map
             ))
         }
+        ORDER BY ?id
         """
 
         results = self.execute_sparql_query(query)
@@ -322,96 +319,51 @@ class MetadataQueryHandler(Handler):
             objects.append(obj)
 
         return pd.DataFrame(objects)
-
     
 
-    def execute_sparql_query(self, query):
-        sparql = SPARQLWrapper(self.dbPathOrUrl + "sparql")
-        sparql.setReturnFormat(JSON)
-        sparql.setQuery(query)
-        ret = sparql.queryAndConvert()
-        df_columns = ret["head"]["vars"]
-        df = pd.DataFrame(columns=df_columns)
-        for row in ret["results"]["bindings"]:
-            row_dict = {}
-            for column in df_columns:
-                if column in row:
-                    row_dict[column] = row[column]["value"]
-                else:
-                    row_dict[column] = None
-            df = df.append(row_dict, ignore_index=True)
-        return df
+    
     
     def getAuthorsOfCulturalHeritageObject(self, object_id: str) -> pd.DataFrame:
-        # Carica i metadati nel database (assicurati di implementare pushDataToDb correttamente)
-        
-        # Query principale per ottenere gli autori
         query = f"""
-        PREFIX base_url: <http://github.com/HelloKittyDataClan/DSexam/>
-        PREFIX schema: <http://schema.org/>
-        PREFIX foaf: <http://xmlns.com/foaf/0.1/>
-
-        SELECT DISTINCT ?author ?authorName ?entity
-        WHERE {{
-            ?author schema:author ?entity .
-            ?author foaf:name ?authorName .
-            ?author schema:identifier ?authorID
-        }}
-        """
-    
-        df = self.execute_sparql_query(query)
-        if df.empty:
-            return pd.DataFrame()
-
-        df['author'] = df['author'].apply(lambda x: x.rsplit('/', 1)[-1])
-        
-        data = []
-        authors_seen = set()
-        columns = ['author', 'authorName', 'authorID']
-        
-        # Prima parte della query già gestita
-        
-        for index, row in df.iterrows():
-            author_uri = row['author']
-            author_name = row['authorName']
-            author_id = row['entity'].rsplit('/', 1)[-1]
-
-            # Controlla se l'autore è già stato visto
-            if author_uri not in authors_seen:
-                data.append([author_uri, author_name, author_id])
-                authors_seen.add(author_uri)
-        
-        # Seconda parte della query per gestire eventuali duplicati di autori non visti nella prima query
-        query_2 = f"""
-        PREFIX base_url: <http://github.com/HelloKittyDataClan/DSexam/>
         PREFIX schema: <http://schema.org/>
         PREFIX foaf: <http://xmlns.com/foaf/0.1/>
 
         SELECT DISTINCT ?authorName ?authorID ?entity
         WHERE {{
-            ?author schema:author ?entity .
-            OPTIONAL {{ ?author foaf:name ?authorName }}
-            OPTIONAL {{ ?author schema:identifier ?authorID }}
+          ?object schema:identifier "{object_id}" ;
+                  schema:author ?entity .
+
+          ?author schema:author ?entity ;
+                  foaf:name ?authorName .
+          OPTIONAL {{ ?author schema:identifier ?authorID }}
         }}
         """
 
-        df_2 = self.execute_sparql_query(query_2)
-        df_2['author'] = df_2['entity'].apply(lambda x: x.rsplit('/', 1)[-1])
-        df_2 = df_2.rename(columns={'authorName': 'authorName', 'authorID': 'authorID'})
-        
-        for index, row in df_2.iterrows():
-            author_uri = row['author']
-            author_name = row['authorName']
-            author_id = row['entity'].rsplit('/', 1)[-1]
+    # Esecuzione della query SPARQL
+        sparql = SPARQLWrapper(self.endpoint_url)
+        sparql.setQuery(query)
+        sparql.setReturnFormat(JSON)
+        results = sparql.query().convert()
 
-            if author_uri not in authors_seen:
-                data.append([author_uri, author_name, author_id])
-                authors_seen.add(author_uri)
-        
-        # Crea il DataFrame finale
-        df_final = pd.DataFrame(data, columns=columns)
-        return df_final
+    # Creazione del DataFrame Pandas dai risultati della query SPARQL
+        columns = ['authorName', 'authorID', 'entity']
+        data = []
+        for result in results['results']['bindings']:
+            author_name = result.get('authorName', {}).get('value', None)
+            author_id = result.get('authorID', {}).get('value', None)
+            entity = result.get('entity', {}).get('value', None)
+            data.append([author_name, author_id, entity])
 
+        df = pd.DataFrame(data, columns=columns)
+
+    # Rimuovere duplicati basati su authorName e authorID
+        df['author'] = df['entity'].apply(lambda x: x.rsplit('/', 1)[-1])  # Normalizzazione dell'URI, se necessario
+        df.drop_duplicates(subset=['authorName', 'authorID'], keep='first', inplace=True)
+
+    # Selezionare solo le colonne necessarie
+        df = df[['authorName', 'authorID', 'entity']]
+
+        return df        
 
 
     
