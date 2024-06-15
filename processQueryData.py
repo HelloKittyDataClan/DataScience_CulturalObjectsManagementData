@@ -27,7 +27,9 @@ class UploadHandler(Handler):
 
     def pushDataToDb(self):
         pass
-    
+
+_____________________RELATIONAL DATA BASE____________________________
+
 class ProcessDataUploadHandler(UploadHandler):  #Cata
     def __init__(self):
         super().__init__()
@@ -101,38 +103,38 @@ class ProcessDataUploadHandler(UploadHandler):  #Cata
         
     #Create individual DataFrame tables calling the pushDataToDbActivities, internal ID, etc.
     def createTablesActivity(self, activities_file_path: str, objects_file_path: str):
-        # Create individual DataFrames
+        #Create individual DataFrames
         acquisition_df = self.pushDataToDbActivities(activities_file_path, 'acquisition')
         processing_df = self.pushDataToDbActivities(activities_file_path, 'processing')
         modelling_df = self.pushDataToDbActivities(activities_file_path, 'modelling')
         optimising_df = self.pushDataToDbActivities(activities_file_path, 'optimising')
         exporting_df = self.pushDataToDbActivities(activities_file_path, 'exporting')
 
-        # Add internal IDs to each DataFrame
+        #Add internal IDs to each DataFrame
         acquisition_df = self.addInternalIds(acquisition_df, 'acquisition')
         processing_df = self.addInternalIds(processing_df, 'processing')
         modelling_df = self.addInternalIds(modelling_df, 'modelling')
         optimising_df = self.addInternalIds(optimising_df, 'optimising')
         exporting_df = self.addInternalIds(exporting_df, 'exporting')
 
-        # Load object IDs
+        #Load object IDs
         objects_ids_df = self.pushDataToDbObject(objects_file_path)
 
-        # Join activity DataFrames with objects DataFrame
+        #Join activity DataFrames with objects DataFrame
         acquisition_joined = self.joinActivitiesWithObjects(acquisition_df, objects_ids_df, "object id", "objectId")
         processing_joined = self.joinActivitiesWithObjects(processing_df, objects_ids_df, "object id", "objectId")
         modelling_joined = self.joinActivitiesWithObjects(modelling_df, objects_ids_df, "object id", "objectId")
         optimising_joined = self.joinActivitiesWithObjects(optimising_df, objects_ids_df, "object id", "objectId")
         exporting_joined = self.joinActivitiesWithObjects(exporting_df, objects_ids_df, "object id", "objectId")
 
-        # Extract and rename columns, including 'technique' for acquisition
+        #Extract and rename columns, including 'technique' for acquisition
         acquisition_final_db = self.extractAndRenameColumns(acquisition_joined, include_technique=True)
         processing_final_db = self.extractAndRenameColumns(processing_joined)
         modelling_final_db = self.extractAndRenameColumns(modelling_joined)
         optimising_final_db = self.extractAndRenameColumns(optimising_joined)
         exporting_final_db = self.extractAndRenameColumns(exporting_joined)
         
-        # Save to SQLite database in file
+        #Save to SQLite database in the file
         with connect("activities.db") as con:
             objects_ids_df.to_sql("ObjectId", con, if_exists="replace", index=False)
             acquisition_final_db.to_sql("Acquisition", con, if_exists="replace", index=False)
@@ -157,6 +159,7 @@ class ProcessDataUploadHandler(UploadHandler):  #Cata
 process_upload = ProcessDataUploadHandler()
 process_upload.createTablesActivity('process.json', 'meta.csv')
 
+_____________QUERIES_____________________________
 
 class QueryHandler(Handler): #Elena
     def __init__(self):
