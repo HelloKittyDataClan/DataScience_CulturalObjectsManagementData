@@ -159,6 +159,8 @@ class ProcessDataUploadHandler(UploadHandler):  #Cata
 process_upload = ProcessDataUploadHandler()
 process_upload.createTablesActivity('process.json', 'meta.csv')
 
+process_upload.close()
+
 _____________QUERIES_____________________________
 
 class QueryHandler(Handler): #Elena
