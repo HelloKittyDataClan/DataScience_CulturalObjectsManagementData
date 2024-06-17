@@ -166,7 +166,7 @@ class MetadataUploadHandler(UploadHandler):  # Chiara
                 # Aggiungi l'assegnazione degli autori al grafo
                 for object_id, authors in object_mapping.items():
                     for author_uri in authors:
-                        my_graph.add((URIRef(base_url + object_id), relAuthor, author_uri))  # modifica leggi alla fine del codice
+                        my_graph.add((URIRef(base_url +"culturalobject-" + object_id), relAuthor, author_uri))  # MODIFICA mancava cultural object come parte del predicato
 
             # Store RDF data in SPARQL endpoint
             store = SPARQLUpdateStore()
@@ -222,7 +222,6 @@ class MetadataQueryHandler(Handler):
     def __init__(self, db_url):
         super().__init__()
         self.dbPathOrUrl = db_url
-        
 
     def execute_sparql_query(self, query):
         sparql = SPARQLWrapper(self.dbPathOrUrl + "sparql")
@@ -230,17 +229,17 @@ class MetadataQueryHandler(Handler):
         sparql.setQuery(query)
         ret = sparql.queryAndConvert()
         df_columns = ret["head"]["vars"]
-        df = pd.DataFrame(columns=df_columns)
+        
+        # Collect row data in a list
+        rows = []
         for row in ret["results"]["bindings"]:
-            row_dict = {}
-            for column in df_columns:
-                if column in row:
-                    row_dict[column] = row[column]["value"]
-                else:
-                    row_dict[column] = None
-            df = df.append(row_dict, ignore_index=True)
+            row_dict = {column: row[column]["value"] if column in row else None for column in df_columns}
+            rows.append(row_dict)
+        
+        # Create DataFrame from the list of rows
+        df = pd.DataFrame(rows, columns=df_columns)
         return df
-
+    
 
 
 
@@ -277,17 +276,21 @@ class MetadataQueryHandler(Handler):
         PREFIX base_url: <http://github.com/HelloKittyDataClan/DSexam/>
         PREFIX db: <https://dbpedia.org/property/>
 
-        SELECT DISTINCT ?object ?id ?type ?title ?date ?author ?owner ?place
+        SELECT DISTINCT ?object ?id ?type ?title ?date ?owner ?place ?author ?authorName ?authorID
         WHERE {
             ?object a ?type ;
                     schema:identifier ?id ;
                     schema:title ?title ;
-                    schema:dateCreated ?date ;
                     base_url:owner ?owner ;
                     schema:itemLocation ?place .
-    
-            OPTIONAL { ?object schema:author ?author . }
-
+                
+            OPTIONAL { ?object schema:dateCreated ?date }
+            OPTIONAL {
+                ?object schema:author ?author .
+                ?author foaf:name ?authorName ;
+                schema:identifier ?authorID .
+            }
+        
             FILTER (?type IN (
                 base_url:NauticalChart,
                 base_url:ManuscriptPlate,
@@ -301,11 +304,10 @@ class MetadataQueryHandler(Handler):
                 db:Map
             ))
         }
-        ORDER BY ?id
         """
-
+    
         results = self.execute_sparql_query(query)
-
+    
         objects = []
         for result in results["results"]["bindings"]:
             obj = {}
@@ -316,101 +318,114 @@ class MetadataQueryHandler(Handler):
             obj["date"] = result["date"]["value"] if "date" in result else None
             obj["owner"] = result["owner"]["value"] if "owner" in result else None
             obj["place"] = result["place"]["value"] if "place" in result else None
+            obj["authorName"] = result["authorName"]["value"] if "authorName" in result else None
+            obj["authorID"] = result["authorID"]["value"] if "authorID" in result else None
             objects.append(obj)
 
         return pd.DataFrame(objects)
-    
 
-    
-    
+
+
     def getAuthorsOfCulturalHeritageObject(self, object_id: str) -> pd.DataFrame:
         query = f"""
         PREFIX schema: <http://schema.org/>
         PREFIX foaf: <http://xmlns.com/foaf/0.1/>
 
-        SELECT DISTINCT ?authorName ?authorID ?entity
+        SELECT DISTINCT ?authorName ?authorID 
         WHERE {{
           ?object schema:identifier "{object_id}" ;
                   schema:author ?entity .
 
           ?author schema:author ?entity ;
-                  foaf:name ?authorName .
-          OPTIONAL {{ ?author schema:identifier ?authorID }}
+                  foaf:name ?authorName ;
+                  schema:identifier ?authorID .
         }}
         """
 
-    # Esecuzione della query SPARQL
-        sparql = SPARQLWrapper(self.endpoint_url)
+        
+        sparql = SPARQLWrapper(self.dbPathOrUrl + "sparql")
         sparql.setQuery(query)
         sparql.setReturnFormat(JSON)
         results = sparql.query().convert()
 
-    # Creazione del DataFrame Pandas dai risultati della query SPARQL
-        columns = ['authorName', 'authorID', 'entity']
+        
+        columns = ['authorName', 'authorID', 'author']
         data = []
         for result in results['results']['bindings']:
             author_name = result.get('authorName', {}).get('value', None)
             author_id = result.get('authorID', {}).get('value', None)
-            entity = result.get('entity', {}).get('value', None)
-            data.append([author_name, author_id, entity])
+            author_uri = result.get('author', {}).get('value', None)
+            data.append([author_name, author_id, author_uri])
 
         df = pd.DataFrame(data, columns=columns)
 
-    # Rimuovere duplicati basati su authorName e authorID
-        df['author'] = df['entity'].apply(lambda x: x.rsplit('/', 1)[-1])  # Normalizzazione dell'URI, se necessario
+       
         df.drop_duplicates(subset=['authorName', 'authorID'], keep='first', inplace=True)
 
-    # Selezionare solo le colonne necessarie
-        df = df[['authorName', 'authorID', 'entity']]
-
-        return df        
-
-
+        return df
     
-    def getCulturalHeritageObjectsAuthoredBy(personid: str) -> pd.DataFrame:
-        sparql = SPARQLWrapper(grp_dbUrl + "sparql")
-
-        query = """
+    def getCulturalHeritageObjectsAuthoredBy(self, personid: str) -> pd.DataFrame:
+        query = f"""
         PREFIX schema: <http://schema.org/>
-        PREFIX foaf: <http://xmlns.com/foaf/0.1/>
         PREFIX base_url: <http://github.com/HelloKittyDataClan/DSexam/>
+        PREFIX db: <https://dbpedia.org/property/>
+        PREFIX foaf: <http://xmlns.com/foaf/0.1/>
 
-        SELECT ?author ?author_name ?object ?object_id ?title ?date ?owner ?place
-        WHERE {
-            ?author a foaf:Person ;
-                    schema:identifier "%s" ;
-                    foaf:name ?author_name .
-        
-            OPTIONAL {
-                ?object base_url:owner ?owner ;
-                        schema:identifier ?object_id ;
-                        schema:title ?title .
-            
-                OPTIONAL { ?object schema:dateCreated ?date }
-                OPTIONAL { ?object schema:itemLocation ?place }
-                OPTIONAL { ?object schema:author ?author }
-            }
-        }
-        """ % (personid)
+        SELECT DISTINCT ?object ?id ?type ?title ?date ?owner ?place ?authorName ?authorID
+        WHERE {{
+            ?object a ?type ;
+                    schema:identifier ?id ;
+                    schema:title ?title ;
+                    base_url:owner ?owner ;
+                    schema:itemLocation ?place ;
+                    schema:author ?author .
+
+            ?author foaf:name ?authorName ;
+                    schema:identifier ?authorID ;
+                    schema:identifier "{personid}" .
+
+            OPTIONAL {{ ?object schema:dateCreated ?date }}
+
+            FILTER (?type IN (
+                base_url:NauticalChart,
+                base_url:ManuscriptPlate,
+                base_url:ManuscriptVolume,
+                base_url:PrintedVolume,
+                base_url:PrintedMaterial,
+                db:Herbarium,
+                base_url:Specimen,
+                db:Painting,
+                db:Model,
+                db:Map
+            ))
+        }}
+        """
+
+       
+        sparql = SPARQLWrapper(self.dbPathOrUrl + "sparql")
         sparql.setQuery(query)
         sparql.setReturnFormat(JSON)
-        results = sparql.query().convert()
-    
-    
-        columns = ["author", "author_name", "object", "object_id", "title", "date", "owner", "place"]
-        rows = []
-    
-        for result in results["results"]["bindings"]:
-            row = []
-        for col in columns:
-            row.append(result.get(col, {}).get("value"))
-        rows.append(row)
-    
-        df = pd.DataFrame(rows, columns=columns)
-    
-        return df
+        
+        try:
+            results = sparql.query().convert()
+        except Exception as e:
+            print(f"Errore nella query SPARQL: {e}")
+            return pd.DataFrame()  # Ritorna un DataFrame vuoto in caso di errore
 
-grp_dbUrl = "http://192.168.1.8:9999/blazegraph/"
-metadata = MetadataUploadHandler()
-metadata.setDbPathOrUrl(grp_dbUrl)
-metadata.pushDataToDb("data/meta.csv")
+        
+        objects = []
+        for result in results.get("results", {}).get("bindings", []):
+            obj = {
+                "object": result.get("object", {}).get("value", None),
+                "id": result.get("id", {}).get("value", None),
+                "type": result.get("type", {}).get("value", None),
+                "title": result.get("title", {}).get("value", None),
+                "date": result.get("date", {}).get("value", None),
+                "owner": result.get("owner", {}).get("value", None),
+                "place": result.get("place", {}).get("value", None),
+                "authorName": result.get("authorName", {}).get("value", None),
+                "authorID": result.get("authorID", {}).get("value", None),
+            }
+            objects.append(obj)
+
+        return pd.DataFrame(objects)
