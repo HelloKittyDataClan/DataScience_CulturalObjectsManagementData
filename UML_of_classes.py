@@ -3,6 +3,7 @@ from rdflib.namespace import FOAF
 from rdflib import Graph, URIRef, RDF, Namespace, Literal
 from rdflib.plugins.stores.sparqlstore import SPARQLUpdateStore
 from SPARQLWrapper import SPARQLWrapper, JSON
+from rdflib.plugins.sparql import prepareQuery #per la parte di Getbyid MetadataQueryHandler
 import pandas as pd
 import numpy as np
 import csv
@@ -215,10 +216,16 @@ WHERE {
 
 
 # java -server -Xmx1g -jar blazegraph.jar (terminal command to run Blazegraph)
-
-
 #Bea
-class MetadataQueryHandler(Handler):
+class QueryHandler(Handler):
+    def __init__(self, dbPathOrUrl: str = ""):
+        super().__init__()
+        self.dbPathOrUrl = dbPathOrUrl
+
+    def getById(self, id: str) -> DataFrame:
+        pass
+
+class MetadataQueryHandler(QueryHandler):
     def __init__(self, db_url):
         super().__init__()
         self.dbPathOrUrl = db_url
@@ -239,11 +246,57 @@ class MetadataQueryHandler(Handler):
         # Create DataFrame from the list of rows
         df = pd.DataFrame(rows, columns=df_columns)
         return df
+        
     
 
 
+    def getById(self, id):
+        person_query_str = """
+            SELECT DISTINCT ?uri ?name ?id 
+            WHERE {
+                ?uri <http://schema.org/identifier> "%s" ;    #ostituire con ULAN o VIAF 
+                     <http://xmlns.com/foaf/0.1/name> ?name ;
+                     <http://schema.org/identifier> ?id .
+                ?object <http://schema.org/author> ?uri .
+            }
+        """ % id
+        
+        object_query_str = """
+            SELECT DISTINCT ?object ?id ?type ?title ?date ?owner ?place ?author ?author_name ?author_id 
+            WHERE {
+                ?object <http://schema.org/identifier> "%" . #sostutuire con id autore numero da 1 a 35
+                ?object <http://schema.org/identifier> ?id  .
+                ?object <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> ?type .
+                ?object <http://schema.org/title> ?title .
+                ?object <http://github.com/HelloKittyDataClan/DSexam/owner> ?owner .
+                ?object <http://schema.org/itemLocation> ?place .
+                 
+                OPTIONAL {
+                    ?object <http://schema.org/dateCreated> ?date .
+                    ?object <http://schema.org/author> ?author .
+                    ?author <http://xmlns.com/foaf/0.1/name> ?author_name .
+                    ?author <http://schema.org/identifier> ?author_id .
+                }
+            }
 
+        """ % id
 
+        # Prepare SPARQL queries
+        person_query = prepareQuery(person_query_str, initNs={"schema": URIRef("http://schema.org/"), "foaf": URIRef("http://xmlns.com/foaf/0.1/")})
+        object_query = prepareQuery(object_query_str, initNs={"schema": URIRef("http://schema.org/"), "base_url": URIRef("http://github.com/HelloKittyDataClan/DSexam/")})
+        
+        # Execute SPARQL queries
+        person_df = self.execute_sparql_query(person_query)
+        # Execute SPARQL queries
+        person_df = self.execute_sparql_query(person_query)
+        object_df = self.execute_sparql_query(object_query)
+
+        # Check if objects exist and return accordingly
+        if len(object_df) > 0:
+            return object_df
+        else:
+            return person_df
+    
     def getAllPeople(self):
         query = """
         PREFIX FOAF: <http://xmlns.com/foaf/0.1/>
