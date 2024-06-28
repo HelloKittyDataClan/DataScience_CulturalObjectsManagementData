@@ -1,14 +1,11 @@
-from rdflib import Namespace 
-from rdflib.namespace import FOAF
 from rdflib import Graph, URIRef, RDF, Namespace, Literal
+from rdflib.namespace import FOAF
 from rdflib.plugins.stores.sparqlstore import SPARQLUpdateStore
 from SPARQLWrapper import SPARQLWrapper, JSON
-from rdflib.plugins.sparql import prepareQuery #per la parte di Getbyid MetadataQueryHandler
 import pandas as pd
-import numpy as np
 import csv
-import urllib.request
-from sparql_dataframe import get
+
+
 
 
 
@@ -217,44 +214,42 @@ WHERE {
 
 # java -server -Xmx1g -jar blazegraph.jar (terminal command to run Blazegraph)
 #Bea
-class QueryHandler(Handler):
-    def __init__(self, dbPathOrUrl: str = ""):
-        super().__init__()
-        self.dbPathOrUrl = dbPathOrUrl
-
-    def getById(self, id: str) -> DataFrame:
-        pass
-
 class MetadataQueryHandler(QueryHandler):
-    def __init__(self, db_url):
-        super().__init__()
-        self.dbPathOrUrl = db_url
+    def __init__(self, grp_dbUrl: str):
+        super().__init__(dbPathOrUrl = grp_dbUrl)
 
-    def execute_sparql_query(self, query):
+
+    def get(self, query, parse_results=True):                  #sostituzione per far si che che venga eseguita la query e restituisca risultati in DataFraame
         sparql = SPARQLWrapper(self.dbPathOrUrl + "sparql")
         sparql.setReturnFormat(JSON)
         sparql.setQuery(query)
-        ret = sparql.queryAndConvert()
-        df_columns = ret["head"]["vars"]
-        
-        # Collect row data in a list
-        rows = []
-        for row in ret["results"]["bindings"]:
-            row_dict = {column: row[column]["value"] if column in row else None for column in df_columns}
-            rows.append(row_dict)
-        
-        # Create DataFrame from the list of rows
-        df = pd.DataFrame(rows, columns=df_columns)
-        return df
-        
+
+        try:
+            sparql_result = sparql.queryAndConvert()
+            if parse_results:
+                # Parse SPARQL results into a pandas DataFrame
+                df_columns = sparql_result["head"]["vars"]
+                rows = []
+                for result in sparql_result["results"]["bindings"]:
+                    row_dict = {column: result[column]["value"] if column in result else None for column in df_columns}
+                    rows.append(row_dict)
+                df = pd.DataFrame(rows, columns=df_columns)
+                return df
+            else:
+                return sparql_result  # Return raw SPARQL results if parse_results is False
+
+        except Exception as e:
+            print(f"Error executing SPARQL query: {e}")
+            return pd.DataFrame() 
+
+
+   
     
-
-
     def getById(self, id):
         person_query_str = """
             SELECT DISTINCT ?uri ?name ?id 
             WHERE {
-                ?uri <http://schema.org/identifier> "%s" ;    #ostituire con ULAN o VIAF 
+                ?uri <http://schema.org/identifier> "%s" ;
                      <http://xmlns.com/foaf/0.1/name> ?name ;
                      <http://schema.org/identifier> ?id .
                 ?object <http://schema.org/author> ?uri .
@@ -264,7 +259,7 @@ class MetadataQueryHandler(QueryHandler):
         object_query_str = """
             SELECT DISTINCT ?object ?id ?type ?title ?date ?owner ?place ?author ?author_name ?author_id 
             WHERE {
-                ?object <http://schema.org/identifier> "%" . #sostutuire con id autore numero da 1 a 35
+                ?object <http://schema.org/identifier> "%s" .
                 ?object <http://schema.org/identifier> ?id  .
                 ?object <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> ?type .
                 ?object <http://schema.org/title> ?title .
@@ -280,22 +275,15 @@ class MetadataQueryHandler(QueryHandler):
             }
 
         """ % id
+        person_df = self.get(person_query_str)
+        object_df = self.get(object_query_str)
 
-        # Prepare SPARQL queries
-        person_query = prepareQuery(person_query_str, initNs={"schema": URIRef("http://schema.org/"), "foaf": URIRef("http://xmlns.com/foaf/0.1/")})
-        object_query = prepareQuery(object_query_str, initNs={"schema": URIRef("http://schema.org/"), "base_url": URIRef("http://github.com/HelloKittyDataClan/DSexam/")})
-        
-        # Execute SPARQL queries
-        person_df = self.execute_sparql_query(person_query)
-        # Execute SPARQL queries
-        person_df = self.execute_sparql_query(person_query)
-        object_df = self.execute_sparql_query(object_query)
+        if person_df.empty and object_df.empty:
+            return pd.DataFrame()  # Return an empty DataFrame if no results
 
-        # Check if objects exist and return accordingly
-        if len(object_df) > 0:
-            return object_df
-        else:
-            return person_df
+        combined_df = pd.concat([person_df, object_df], ignore_index=True)
+        return combined_df
+    
     
     def getAllPeople(self):
         query = """
@@ -309,21 +297,27 @@ class MetadataQueryHandler(QueryHandler):
                  FOAF:name ?author_name .
         }
         """
-        results = self.execute_sparql_query(query)
-        rows = []
-        for result in results["results"]["bindings"]:
-            row = {
-                "uri": result["uri"]["value"],
-                "author_name": result["author_name"]["value"],
-                "author_id": result["author_id"]["value"]
-            }
-            rows.append(row)
-    
-        df = pd.DataFrame(rows)
+        results = self.get(query, parse_results=True)  # Esegui la query SPARQL
+
+        # Costruisci il DataFrame a partire dai risultati della query
+        if results.empty:
+            return pd.DataFrame()  # Ritorna un DataFrame vuoto se non ci sono risultati
+
+        # Costruisci il DataFrame utilizzando i dati ottenuti
+        df = pd.DataFrame(results, columns=['uri', 'author_name', 'author_id'])  # Aggiungi altre colonne se necessario
+
         return df
+
+     
+    
+
+
+
+
     
     
-    def getAllCulturalHeritageObjects(self) -> pd.DataFrame:
+    
+    def getAllCulturalHeritageObjects(self):
         query = """
         PREFIX schema: <http://schema.org/>
         PREFIX base_url: <http://github.com/HelloKittyDataClan/DSexam/>
@@ -358,24 +352,10 @@ class MetadataQueryHandler(QueryHandler):
             ))
         }
         """
+        return self.get(query)
+       
     
-        results = self.execute_sparql_query(query)
-    
-        objects = []
-        for result in results["results"]["bindings"]:
-            obj = {}
-            obj["object"] = result["object"]["value"] if "object" in result else None
-            obj["id"] = result["id"]["value"] if "id" in result else None
-            obj["type"] = result["type"]["value"] if "type" in result else None
-            obj["title"] = result["title"]["value"] if "title" in result else None
-            obj["date"] = result["date"]["value"] if "date" in result else None
-            obj["owner"] = result["owner"]["value"] if "owner" in result else None
-            obj["place"] = result["place"]["value"] if "place" in result else None
-            obj["authorName"] = result["authorName"]["value"] if "authorName" in result else None
-            obj["authorID"] = result["authorID"]["value"] if "authorID" in result else None
-            objects.append(obj)
-
-        return pd.DataFrame(objects)
+        
 
 
 
@@ -395,27 +375,11 @@ class MetadataQueryHandler(QueryHandler):
         }}
         """
 
-        
-        sparql = SPARQLWrapper(self.dbPathOrUrl + "sparql")
-        sparql.setQuery(query)
-        sparql.setReturnFormat(JSON)
-        results = sparql.query().convert()
+        return self.get(query) #restituisci i risultati in DataFrame collegandoti all'implementazione def get
+    
 
-        
-        columns = ['authorName', 'authorID', 'author']
-        data = []
-        for result in results['results']['bindings']:
-            author_name = result.get('authorName', {}).get('value', None)
-            author_id = result.get('authorID', {}).get('value', None)
-            author_uri = result.get('author', {}).get('value', None)
-            data.append([author_name, author_id, author_uri])
 
-        df = pd.DataFrame(data, columns=columns)
 
-       
-        df.drop_duplicates(subset=['authorName', 'authorID'], keep='first', inplace=True)
-
-        return df
     
     def getCulturalHeritageObjectsAuthoredBy(self, personid: str) -> pd.DataFrame:
         query = f"""
@@ -454,31 +418,4 @@ class MetadataQueryHandler(QueryHandler):
         }}
         """
 
-       
-        sparql = SPARQLWrapper(self.dbPathOrUrl + "sparql")
-        sparql.setQuery(query)
-        sparql.setReturnFormat(JSON)
-        
-        try:
-            results = sparql.query().convert()
-        except Exception as e:
-            print(f"Errore nella query SPARQL: {e}")
-            return pd.DataFrame()  # Ritorna un DataFrame vuoto in caso di errore
-
-        
-        objects = []
-        for result in results.get("results", {}).get("bindings", []):
-            obj = {
-                "object": result.get("object", {}).get("value", None),
-                "id": result.get("id", {}).get("value", None),
-                "type": result.get("type", {}).get("value", None),
-                "title": result.get("title", {}).get("value", None),
-                "date": result.get("date", {}).get("value", None),
-                "owner": result.get("owner", {}).get("value", None),
-                "place": result.get("place", {}).get("value", None),
-                "authorName": result.get("authorName", {}).get("value", None),
-                "authorID": result.get("authorID", {}).get("value", None),
-            }
-            objects.append(obj)
-
-        return pd.DataFrame(objects)
+        return self.get(query)
