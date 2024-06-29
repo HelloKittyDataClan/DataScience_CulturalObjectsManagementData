@@ -419,3 +419,72 @@ class MetadataQueryHandler(QueryHandler):
         """
 
         return self.get(query)
+
+
+#BasicMashup
+
+class BasicMashup:
+    def __init__(self):
+        self.metadata_query_handlers = []
+    
+
+   
+
+    def addMetadataHandler(self, handler: MetadataQueryHandler) -> bool:
+        self.metadata_query_handlers.append(handler)
+        return True
+    
+    def getEntityById(self, id: str) -> Optional[IdentifiableEntity]:
+        print(f"Searching for entity with ID: {id}")
+        for handler in self.metadata_query_handlers:
+            result = handler.getById(id)
+            print(f"Result from handler: {result}")
+
+            if not result.empty:
+                entity_type = result.iloc[0].get('type')
+                entity_name = result.iloc[0].get('name')
+                print(f"Found entity type: {entity_type}, name: {entity_name}")
+
+                if entity_type == 'Person':
+                    entity = Person(id=id, name=entity_name)
+                else:
+                    entity = IdentifiableEntity(id=id)
+
+                print(f"Found entity: {entity.__class__.__name__} with ID: {entity.id}")
+                if isinstance(entity, Person):
+                    print(f"Name: {entity.name}")
+                
+                return entity
+
+        print("No entity found")
+        return None
+
+
+
+    
+    
+    
+
+    def getAllPeople(self):
+        # Ottieni tutte le persone usando MetadataQueryHandler
+        people = []
+        for handler in self.metadata_query_handlers:
+            people_data = handler.getAllPeople()
+            for _, person_data in people_data.iterrows():
+                person = Person(id=person_data['author_id'], name=person_data['author_name'])
+                people.append(person)
+        return people
+    
+
+
+    def getCulturalHeritageObjectsAuthoredBy(self, person_id: str) -> pd.DataFrame:
+        all_objects = pd.DataFrame()
+        for handler in self.metadata_query_handlers:
+            result = handler.getCulturalHeritageObjectsAuthoredBy(person_id)
+            all_objects = pd.concat([all_objects, result], ignore_index=True)
+
+        if not all_objects.empty:
+        # Rimuovere le colonne duplicate dopo il merge
+            all_objects = all_objects.loc[:,~all_objects.columns.duplicated()]
+
+        return all_objects
