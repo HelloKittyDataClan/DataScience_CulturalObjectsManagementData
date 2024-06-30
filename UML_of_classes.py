@@ -2,8 +2,10 @@ from rdflib import Graph, URIRef, RDF, Namespace, Literal
 from rdflib.namespace import FOAF
 from rdflib.plugins.stores.sparqlstore import SPARQLUpdateStore
 from SPARQLWrapper import SPARQLWrapper, JSON
+from typing import List
 import pandas as pd
 import csv
+
 
 
 
@@ -164,7 +166,7 @@ class MetadataUploadHandler(UploadHandler):  # Chiara
                 # Aggiungi l'assegnazione degli autori al grafo
                 for object_id, authors in object_mapping.items():
                     for author_uri in authors:
-                        my_graph.add((URIRef(base_url +"culturalobject-" + object_id), relAuthor, author_uri))  # MODIFICA mancava cultural object come parte del predicato
+                        my_graph.add((URIRef(base_url +"culturalheritageobject-" + object_id), relAuthor, author_uri))  # MODIFICA mancava cultural object come parte del predicato
 
             # Store RDF data in SPARQL endpoint
             store = SPARQLUpdateStore()
@@ -218,16 +220,17 @@ class MetadataQueryHandler(QueryHandler):
     def __init__(self, grp_dbUrl: str):
         super().__init__(dbPathOrUrl = grp_dbUrl)
 
-
-    def get(self, query, parse_results=True):                  #sostituzione per far si che che venga eseguita la query e restituisca risultati in DataFraame
-        sparql = SPARQLWrapper(self.dbPathOrUrl + "sparql")
+     def get(self, query, parse_results=True):
+        sparql = SPARQLWrapper(self.dbPathOrUrl + "sparql")        #modificata leggeremente per renderla più robusta e comprensibile 
         sparql.setReturnFormat(JSON)
         sparql.setQuery(query)
 
         try:
             sparql_result = sparql.queryAndConvert()
             if parse_results:
-                # Parse SPARQL results into a pandas DataFrame
+                if 'head' not in sparql_result or 'results' not in sparql_result:
+                    return pd.DataFrame()
+
                 df_columns = sparql_result["head"]["vars"]
                 rows = []
                 for result in sparql_result["results"]["bindings"]:
@@ -236,11 +239,11 @@ class MetadataQueryHandler(QueryHandler):
                 df = pd.DataFrame(rows, columns=df_columns)
                 return df
             else:
-                return sparql_result  # Return raw SPARQL results if parse_results is False
+                return sparql_result  
 
         except Exception as e:
             print(f"Error executing SPARQL query: {e}")
-            return pd.DataFrame() 
+            return pd.DataFrame()   
 
 
    
@@ -359,7 +362,7 @@ class MetadataQueryHandler(QueryHandler):
 
 
 
-    def getAuthorsOfCulturalHeritageObject(self, object_id: str) -> pd.DataFrame:
+    def getAuthorsOfCulturalHeritageObject(self, object_id: str) -> pd.DataFrame:        #modifica per ottenere un object id con la query giusta
         query = f"""
         PREFIX schema: <http://schema.org/>
         PREFIX foaf: <http://xmlns.com/foaf/0.1/>
@@ -367,17 +370,14 @@ class MetadataQueryHandler(QueryHandler):
         SELECT DISTINCT ?authorName ?authorID 
         WHERE {{
           ?object schema:identifier "{object_id}" ;
-                  schema:author ?entity .
+                  schema:author ?uri .
 
-          ?author schema:author ?entity ;
-                  foaf:name ?authorName ;
-                  schema:identifier ?authorID .
-        }}
+          ?uri schema:identifier ?authorID ;
+               foaf:name ?authorName .
+        }} 
         """
 
-        return self.get(query) #restituisci i risultati in DataFrame collegandoti all'implementazione def get
-    
-
+        return self.get(query)
 
 
     
@@ -433,8 +433,10 @@ class BasicMashup:
     def addMetadataHandler(self, handler: MetadataQueryHandler) -> bool:
         self.metadata_query_handlers.append(handler)
         return True
+
+        
     
-    def getEntityById(self, id: str) -> Optional[IdentifiableEntity]:
+    def getEntityById(self, id: str) -> Optional[IdentifiableEntity]:   #gentilmente da rivedere domani insieme e capire il problema    
         print(f"Searching for entity with ID: {id}")
         for handler in self.metadata_query_handlers:
             result = handler.getById(id)
@@ -465,7 +467,7 @@ class BasicMashup:
     
     
 
-    def getAllPeople(self):
+    def getAllPeople(self):                                            #restituisce la lista delle persone 
         # Ottieni tutte le persone usando MetadataQueryHandler
         people = []
         for handler in self.metadata_query_handlers:
@@ -477,14 +479,14 @@ class BasicMashup:
     
 
 
-    def getCulturalHeritageObjectsAuthoredBy(self, person_id: str) -> pd.DataFrame:
-        all_objects = pd.DataFrame()
+    def getAllCulturalHeritageObjects(self) -> List[CulturalHeritageObject]:                                   #restituisce un elenco di oggetti CulturaalHeritageObject dal Database, ciascuno appartenente alla classe propria
+        all_objects = []
         for handler in self.metadata_query_handlers:
-            result = handler.getCulturalHeritageObjectsAuthoredBy(person_id)
-            all_objects = pd.concat([all_objects, result], ignore_index=True)
-
-        if not all_objects.empty:
-        # Rimuovere le colonne duplicate dopo il merge
-            all_objects = all_objects.loc[:,~all_objects.columns.duplicated()]
-
+            results = handler.getAllCulturalHeritageObjects()
+            for _, row in results.iterrows():
+                if row['type'] == 'Map':
+                    obj = Map(id=row['id'], title=row['title'], owner=row['owner'], place=row['place'], date=row['date'])
+                else:
+                    obj = CulturalHeritageObject(id=row['id'], title=row['title'], owner=row['owner'], place=row['place'], date=row['date'])
+                all_objects.append(obj)
         return all_objects
