@@ -436,31 +436,50 @@ class BasicMashup:
 
         
     
-    def getEntityById(self, id: str) -> Optional[IdentifiableEntity]:   #gentilmente da rivedere domani insieme e capire il problema    
-        print(f"Searching for entity with ID: {id}")
+    def getEntityById(self, id: str) -> Optional[IdentifiableEntity]:      #ritorna un oggetto della classe IdentifiableEntity identificando l'entità corrispondente all'identificatore dato nelle basi dati accessibili tramite i gestori di query; se non viene trovata nessuna entità con l'identificatore dato, ritorna None, assicurando che l'oggetto restituito appartenga alla classe appropriata.        
         for handler in self.metadata_query_handlers:
             result = handler.getById(id)
-            print(f"Result from handler: {result}")
 
             if not result.empty:
                 entity_type = result.iloc[0].get('type')
-                entity_name = result.iloc[0].get('name')
-                print(f"Found entity type: {entity_type}, name: {entity_name}")
+                entity_id = result.iloc[0].get('id')
+                entity_title = result.iloc[0].get('title')
+                entity_owner = result.iloc[0].get('owner')
+                entity_place = result.iloc[0].get('place')
+                entity_date = result.iloc[0].get('date', None)
+                entity_authors = result.iloc[0].get('authors', [])
+
 
                 if entity_type == 'Person':
-                    entity = Person(id=id, name=entity_name)
+                    entity = Person(id=entity_id, name=entity_title)
+                elif entity_type == 'NauticalChart':
+                    entity = NauticalChart(id=entity_id, title=entity_title, owner=entity_owner, place=entity_place, date=entity_date, authors=entity_authors)
+                elif entity_type == 'ManuscriptPlate':
+                    entity = ManuscriptPlate(id=entity_id, title=entity_title, owner=entity_owner, place=entity_place, date=entity_date, authors=entity_authors)
+                elif entity_type == 'ManuscriptVolume':
+                    entity = ManuscriptVolume(id=entity_id, title=entity_title, owner=entity_owner, place=entity_place, date=entity_date, authors=entity_authors)
+                elif entity_type == 'PrintedVolume':
+                    entity = PrintedVolume(id=entity_id, title=entity_title, owner=entity_owner, place=entity_place, date=entity_date, authors=entity_authors)
+                elif entity_type == 'PrintedMaterial':
+                    entity = PrintedMaterial(id=entity_id, title=entity_title, owner=entity_owner, place=entity_place, date=entity_date, authors=entity_authors)
+                elif entity_type == 'Herbarium':
+                    entity = Herbarium(id=entity_id, title=entity_title, owner=entity_owner, place=entity_place, date=entity_date, authors=entity_authors)
+                elif entity_type == 'Specimen':
+                    entity = Specimen(id=entity_id, title=entity_title, owner=entity_owner, place=entity_place, date=entity_date, authors=entity_authors)
+                elif entity_type == 'Painting':
+                    entity = Painting(id=entity_id, title=entity_title, owner=entity_owner, place=entity_place, date=entity_date, authors=entity_authors)
+                elif entity_type == 'Model':
+                    entity = Model(id=entity_id, title=entity_title, owner=entity_owner, place=entity_place, date=entity_date, authors=entity_authors)
+                elif entity_type == 'Map':
+                    entity = Map(id=entity_id, title=entity_title, owner=entity_owner, place=entity_place, date=entity_date, authors=entity_authors)
                 else:
-                    entity = IdentifiableEntity(id=id)
+                    entity = CulturalHeritageObject(id=entity_id, title=entity_title, owner=entity_owner, place=entity_place, date=entity_date, authors=entity_authors)
+            
 
-                print(f"Found entity: {entity.__class__.__name__} with ID: {entity.id}")
-                if isinstance(entity, Person):
-                    print(f"Name: {entity.name}")
-                
                 return entity
 
-        print("No entity found")
+        
         return None
-
 
 
     
@@ -479,14 +498,42 @@ class BasicMashup:
     
 
 
-    def getAllCulturalHeritageObjects(self) -> List[CulturalHeritageObject]:                                   #restituisce un elenco di oggetti CulturaalHeritageObject dal Database, ciascuno appartenente alla classe propria
+    def getAllCulturalHeritageObjects(self) -> List[CulturalHeritageObject]:     #restituisce una lista di oggetti della classe CulturalHeritageObject che comprende tutte le entità incluse nel database accessibili tramite i gestori di query, garantendo che gli oggetti nella lista siano della classe appropriata,        
         all_objects = []
+
         for handler in self.metadata_query_handlers:
             results = handler.getAllCulturalHeritageObjects()
+
             for _, row in results.iterrows():
-                if row['type'] == 'Map':
-                    obj = Map(id=row['id'], title=row['title'], owner=row['owner'], place=row['place'], date=row['date'])
-                else:
-                    obj = CulturalHeritageObject(id=row['id'], title=row['title'], owner=row['owner'], place=row['place'], date=row['date'])
+                obj_type = row['type']
+
+                
+                object_constructors = {
+                    'Map': Map,
+                    'Painting': Painting,
+                    'Model': Model,
+                    'Herbarium': Herbarium,
+                    'Specimen': Specimen,
+                    'ManuscriptPlate': ManuscriptPlate,
+                    'ManuscriptVolume': ManuscriptVolume,
+                    'PrintedVolume': PrintedVolume,
+                    'PrintedMaterial': PrintedMaterial,
+                }
+
+                
+                obj_constructor = object_constructors.get(obj_type, CulturalHeritageObject)
+
+                
+                obj = obj_constructor(
+                    id=row['id'],
+                    title=row['title'],
+                    owner=row['owner'],
+                    place=row['place'],
+                    date=row['date'],
+                    authors=row.get('authors', [])
+                )
+
                 all_objects.append(obj)
+        
         return all_objects
+    
