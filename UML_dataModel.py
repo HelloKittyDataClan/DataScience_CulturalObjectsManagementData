@@ -29,7 +29,7 @@ class IdentifiableEntity(object): #identifichiamo l'ID
 
 #___________________________CSV_________________________
 
-class CulturalObject(IdentifiableEntity):
+class CulturalHeritageObject(IdentifiableEntity):
     def __init__(self, id:str, title:str, owner:str, place:str, date:str= None,authors:list=None): #vado a definire title, date, owner, place, Author  del mio csv 
         super().__init__(id)  #cosi facendo vado a richiamare l'ID della classe IdentifiableEntity
         if not isinstance(title, str):
@@ -75,34 +75,34 @@ class CulturalObject(IdentifiableEntity):
 
 
 #definiamo le sottoclassi relative alla classe Cultrual Object   
-class NauticalChart(CulturalObject):
+class NauticalChart(CulturalHeritageObject):
     pass
 
-class ManuscriptPlate(CulturalObject):
+class ManuscriptPlate(CulturalHeritageObject):
     pass
 
-class ManuscriptVolume(CulturalObject):
+class ManuscriptVolume(CulturalHeritageObject):
     pass
 
-class PrintedVolume(CulturalObject):
+class PrintedVolume(CulturalHeritageObject):
     pass
 
-class PrintedMaterial(CulturalObject):
+class PrintedMaterial(CulturalHeritageObject):
     pass
 
-class Herbarium(CulturalObject):
+class Herbarium(CulturalHeritageObject):
     pass
 
-class Specimen(CulturalObject):
+class Specimen(CulturalHeritageObject):
     pass
 
-class Painting(CulturalObject):
+class Painting(CulturalHeritageObject):
     pass
 
-class Model(CulturalObject):
+class Model(CulturalHeritageObject):
     pass
 
-class Map(CulturalObject):
+class Map(CulturalHeritageObject):
     pass
 
 
