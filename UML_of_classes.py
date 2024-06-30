@@ -166,7 +166,7 @@ class MetadataUploadHandler(UploadHandler):  # Chiara
                 # Aggiungi l'assegnazione degli autori al grafo
                 for object_id, authors in object_mapping.items():
                     for author_uri in authors:
-                        my_graph.add((URIRef(base_url +"culturalheritageobject-" + object_id), relAuthor, author_uri))  # MODIFICA mancava cultural object come parte del predicato
+                        my_graph.add((URIRef(base_url +"culturalheritageobject-" + object_id), relAuthor, author_uri))  # MODIFICA!!! mancava culturalheritageobject come parte del predicato
 
             # Store RDF data in SPARQL endpoint
             store = SPARQLUpdateStore()
