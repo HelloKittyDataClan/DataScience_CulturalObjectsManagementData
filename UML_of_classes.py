@@ -421,6 +421,7 @@ class MetadataQueryHandler(QueryHandler):
         return self.get(query)
 
 
+
 #BasicMashup
 
 class BasicMashup:
@@ -437,6 +438,14 @@ class BasicMashup:
             return False
         else:
             return self.processQuery.append(processHandler)  # Adds a process handler to the list
+
+    def cleanMetadataHandlers0(self) -> bool:
+        self.metadataHandlers.clear()  #clear the metadata handlers list
+        return True
+
+    def cleanProcessHandlers0(self) -> bool:
+        self.processQuery.clear()  #clear the process handlers list
+        return True
     
     
     def getEntityById(self, id: str) -> Optional[IdentifiableEntity]:      #ritorna un oggetto della classe IdentifiableEntity identificando l'entità corrispondente all'identificatore dato nelle basi dati accessibili tramite i gestori di query; se non viene trovata nessuna entità con l'identificatore dato, ritorna None, assicurando che l'oggetto restituito appartenga alla classe appropriata.        
