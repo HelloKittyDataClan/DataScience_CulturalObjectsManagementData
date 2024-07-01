@@ -28,7 +28,7 @@ class UploadHandler(Handler):
     def pushDataToDb(self):
         pass
 
-_____________________RELATIONAL DATA BASE____________________________
+#_____________________RELATIONAL DATA BASE____________________________
 
 class ProcessDataUploadHandler(UploadHandler):  #Cata
     def __init__(self):
@@ -160,7 +160,7 @@ process_upload = ProcessDataUploadHandler()
 process_upload.createTablesActivity('process.json', 'meta.csv')
 
 
-_____________QUERIES_____________________________
+#_____________QUERIES_____________________________
 
 class QueryHandler(Handler): #Elena
     def __init__(self):
@@ -382,7 +382,7 @@ class ProcessDataQueryHandler(QueryHandler):
             return None
 
         
-__________________________ TESTS ___________________________
+#__________________________ TESTS ___________________________
 
 #Calling all the functions:
 process_query = ProcessDataQueryHandler()
