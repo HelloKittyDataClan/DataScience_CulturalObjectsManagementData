@@ -5,8 +5,8 @@ from SPARQLWrapper import SPARQLWrapper, JSON
 from typing import List
 import pandas as pd
 import csv
-
-
+from processQueryData import ProcessDataQueryHandler
+from UML_dataModel import Acquisition, Processing, Modelling, Optimising, Exporting
 
 
 
@@ -220,7 +220,7 @@ class MetadataQueryHandler(QueryHandler):
     def __init__(self, grp_dbUrl: str):
         super().__init__(dbPathOrUrl = grp_dbUrl)
 
-     def get(self, query, parse_results=True):
+    def get(self, query, parse_results=True):
         sparql = SPARQLWrapper(self.dbPathOrUrl + "sparql")        #modificata leggeremente per renderla più robusta e comprensibile 
         sparql.setReturnFormat(JSON)
         sparql.setQuery(query)
@@ -426,15 +426,18 @@ class MetadataQueryHandler(QueryHandler):
 class BasicMashup:
     def __init__(self):
         self.metadata_query_handlers = []
-    
-
-   
+        self.processQuery = []
 
     def addMetadataHandler(self, handler: MetadataQueryHandler) -> bool:
         self.metadata_query_handlers.append(handler)
         return True
 
-        
+    def addProcessHandler(self, processHandler:ProcessDataQueryHandler) -> bool:
+        if not isinstance(Handler, ProcessDataQueryHandler):
+            return False
+        else:
+            return self.processQuery.append(processHandler)  # Adds a process handler to the list
+    
     
     def getEntityById(self, id: str) -> Optional[IdentifiableEntity]:      #ritorna un oggetto della classe IdentifiableEntity identificando l'entità corrispondente all'identificatore dato nelle basi dati accessibili tramite i gestori di query; se non viene trovata nessuna entità con l'identificatore dato, ritorna None, assicurando che l'oggetto restituito appartenga alla classe appropriata.        
         for handler in self.metadata_query_handlers:
@@ -537,3 +540,218 @@ class BasicMashup:
         
         return all_objects
     
+
+#elena
+def getAllActivities(self):
+    result = []
+    handler_list = self.processQuery  # Gets the list of process handlers
+    df_list = []  # List to store the DataFrames of activities
+
+    # Loop over each process handler
+    for handler in handler_list:
+        df_list.append(handler.getAllActivities())  # Adds the activities of the handler to the list of DataFrames
+
+    # Concatenates all DataFrames, removes duplicates, and fills missing values with empty strings
+    df_union = pd.concat(df_list, ignore_index=True).drop_duplicates().fillna("")
+
+    # Loop over each row of the concatenated DataFrame
+    for _, row in df_union.iterrows():
+        # Splits the "internalId" field to get the type and id
+        activity_type, id = row["internalId"].split("-")
+        # Gets the entity referred to by "objectId"
+        obj_refers_to = self.getEntityById(row["objectId"])
+
+        # Common parameters for all activity objects -- matching data model e existing data from queries according to the method getallactivities
+        common_params = {
+            "institute": row['responsible institute'],
+            "person": row['responsible person'],
+            "tools": row['tool'],
+            "start": row['start date'],
+            "end": row['end date'],
+            "refers_to": obj_refers_to
+        }
+
+        # Checks the type of activity and creates the corresponding object
+        if activity_type == "acquisition":
+            object = Acquisition(technique=row['technique'], **common_params)
+            result.append(object)
+
+        elif activity_type == "processing":
+            object = Processing(**common_params)
+            result.append(object)
+
+        elif activity_type == "modelling":
+            object = Modelling(**common_params)
+            result.append(object)
+
+        elif activity_type == "optimising":
+            object = Optimising(**common_params)
+            result.append(object)
+
+        elif activity_type == "exporting":
+            object = Exporting(**common_params)
+            result.append(object)
+
+    return result  # Returns the list of activity objects
+
+
+
+def getActivitiesByResponsibleInstitution(self, partialName):       
+    result = []
+    handler_list = self.processQuery  # Gets the list of process handlers
+    df_list = []  # List to store the DataFrames of activities
+
+    # Loop over each process handler
+    for handler in handler_list:
+        df_list.append(handler.getActivitiesByResponsibleInstitution(partialName))  # Adds the activities of the handler to the list of DataFrames
+
+    # Concatenates all DataFrames, removes duplicates, and fills missing values with empty strings
+    df_union = pd.concat(df_list, ignore_index=True).drop_duplicates().fillna("")
+
+    # Loop over each row of the concatenated DataFrame
+    for _, row in df_union.iterrows():
+        # Splits the "internalId" field to get the type and id
+        activity_type, id = row["internalId"].split("-")
+        # Gets the entity referred to by "objectId"
+        obj_refers_to = self.getEntityById(row["objectId"])
+
+        # Common parameters for all activity objects -- matching data model e existing data from queries according to the method getallactivities
+        common_params = {
+            "institute": row['responsible institute'],
+            "person": row['responsible person'],
+            "tools": row['tool'],
+            "start": row['start date'],
+            "end": row['end date'],
+            "refers_to": obj_refers_to
+        }
+
+        # Checks the type of activity and creates the corresponding object
+        if activity_type == "acquisition":
+            object = Acquisition(technique=row['technique'], **common_params)
+            result.append(object)
+
+        elif activity_type == "processing":
+            object = Processing(**common_params)
+            result.append(object)
+
+        elif activity_type == "modelling":
+            object = Modelling(**common_params)
+            result.append(object)
+
+        elif activity_type == "optimising":
+            object = Optimising(**common_params)
+            result.append(object)
+
+        elif activity_type == "exporting":
+            object = Exporting(**common_params)
+            result.append(object)
+
+    return result  # Returns the list of activity objects
+
+
+def getgetActivitiesByResponsiblePerson(self, partialName):       
+    result = []
+    handler_list = self.processQuery  # Gets the list of process handlers
+    df_list = []  # List to store the DataFrames of activities
+
+    # Loop over each process handler
+    for handler in handler_list:
+        df_list.append(handler.getActivitiesByResponsiblePerson(partialName))  # Adds the activities of the handler to the list of DataFrames
+
+    # Concatenates all DataFrames, removes duplicates, and fills missing values with empty strings
+    df_union = pd.concat(df_list, ignore_index=True).drop_duplicates().fillna("")
+
+    # Loop over each row of the concatenated DataFrame
+    for _, row in df_union.iterrows():
+        # Splits the "internalId" field to get the type and id
+        activity_type, id = row["internalId"].split("-")
+        # Gets the entity referred to by "objectId"
+        obj_refers_to = self.getEntityById(row["objectId"])
+
+        # Common parameters for all activity objects -- matching data model e existing data from queries according to the method getallactivities
+        common_params = {
+            "institute": row['responsible institute'],
+            "person": row['responsible person'],
+            "tools": row['tool'],
+            "start": row['start date'],
+            "end": row['end date'],
+            "refers_to": obj_refers_to
+        }
+
+        # Checks the type of activity and creates the corresponding object
+        if activity_type == "acquisition":
+            object = Acquisition(technique=row['technique'], **common_params)
+            result.append(object)
+
+        elif activity_type == "processing":
+            object = Processing(**common_params)
+            result.append(object)
+
+        elif activity_type == "modelling":
+            object = Modelling(**common_params)
+            result.append(object)
+
+        elif activity_type == "optimising":
+            object = Optimising(**common_params)
+            result.append(object)
+
+        elif activity_type == "exporting":
+            object = Exporting(**common_params)
+            result.append(object)
+
+    return result  # Returns the list of activity objects
+
+
+
+def getActivitiesUsingTool(self, partialName: str):          
+    result = []
+    handler_list = self.processQuery  # Gets the list of process handlers
+    df_list = []  # List to store the DataFrames of activities
+
+    # Loop over each process handler
+    for handler in handler_list:
+        df_list.append(handler.getActivitiesUsingTool(partialName))  # Adds the activities of the handler to the list of DataFrames
+
+    # Concatenates all DataFrames, removes duplicates, and fills missing values with empty strings
+    df_union = pd.concat(df_list, ignore_index=True).drop_duplicates().fillna("")
+
+    # Loop over each row of the concatenated DataFrame
+    for _, row in df_union.iterrows():
+        # Splits the "internalId" field to get the type and id
+        activity_type, id = row["internalId"].split("-")
+        # Gets the entity referred to by "objectId"
+        obj_refers_to = self.getEntityById(row["objectId"])
+
+        # Common parameters for all activity objects -- matching data model e existing data from queries according to the method getallactivities
+        common_params = {
+            "institute": row['responsible institute'],
+            "person": row['responsible person'],
+            "tools": row['tool'],
+            "start": row['start date'],
+            "end": row['end date'],
+            "refers_to": obj_refers_to
+        }
+
+        # Checks the type of activity and creates the corresponding object
+        if activity_type == "acquisition":
+            object = Acquisition(technique=row['technique'], **common_params)
+            result.append(object)
+
+        elif activity_type == "processing":
+            object = Processing(**common_params)
+            result.append(object)
+
+        elif activity_type == "modelling":
+            object = Modelling(**common_params)
+            result.append(object)
+
+        elif activity_type == "optimising":
+            object = Optimising(**common_params)
+            result.append(object)
+
+        elif activity_type == "exporting":
+            object = Exporting(**common_params)
+            result.append(object)
+
+    return result
+
