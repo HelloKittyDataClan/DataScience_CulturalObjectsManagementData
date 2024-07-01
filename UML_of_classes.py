@@ -764,3 +764,156 @@ def getActivitiesUsingTool(self, partialName: str):
 
     return result
 
+
+def getActivitiesStartedAfter(self, date: str) -> List[Any]:   #Cata
+    result = []
+    handler_list = self.processQuery  #gets the list of process handlers
+    df_list = []  #list to store the DataFrames of activities
+
+    #loop over each process handler
+    for handler in handler_list:
+        df_list.append(handler.getActivities())  #adds the activities of the handler to the list of DataFrames
+
+    #concatenates all DataFrames, removes duplicates, and fills missing values with empty strings
+    df_union = pd.concat(df_list, ignore_index=True).drop_duplicates().fillna("")
+
+    #filter activities that started after the given date
+    df_filtered = df_union[df_union["start date"] > date]
+
+    #loop over each row of the filtered DataFrame
+    for _, row in df_filtered.iterrows():
+        # Splits the "internalId" field to get the type and id
+        activity_type, id = row["internalId"].split("-")
+        # Gets the entity referred to by "objectId"
+        obj_refers_to = self.getEntityById(row["objectId"])
+
+        #common parameters for all activity objects
+        common_params = {
+            "institute": row['responsible institute'],
+            "person": row['responsible person'],
+            "tools": row['tool'],
+            "start": row['start date'],
+            "end": row['end date'],
+            "refers_to": obj_refers_to
+        }
+
+        #checks the type of activity and creates the corresponding object
+        if activity_type == "acquisition":
+            object = Acquisition(technique=row['technique'], **common_params)
+            result.append(object)
+
+        elif activity_type == "processing":
+            object = Processing(**common_params)
+            result.append(object)
+
+        elif activity_type == "modelling":
+            object = Modelling(**common_params)
+            result.append(object)
+
+        elif activity_type == "optimising":
+            object = Optimising(**common_params)
+            result.append(object)
+
+        elif activity_type == "exporting":
+            object = Exporting(**common_params)
+            result.append(object)
+
+    return result
+
+
+def getActivitiesEndedBefore(self, date: str) -> List[Any]:
+    result = [] #same process of Started After
+    handler_list = self.processQuery  
+    df_list = []  
+
+    #loop over each process handler
+    for handler in handler_list:
+        df_list.append(handler.getActivities())  # Adds the activities of the handler to the list of DataFrames
+
+    #cncatenates all DataFrames, removes duplicates, and fills missing values with empty strings
+    df_union = pd.concat(df_list, ignore_index=True).drop_duplicates().fillna("")
+
+    #filter activities that ended before the given date
+    df_filtered = df_union[df_union["end date"] < date]
+
+    #loop over each row of the filtered DataFrame
+    for _, row in df_filtered.iterrows():
+        #splits the "internalId" field to get the type and id
+        activity_type, id = row["internalId"].split("-")
+        # Gets the entity referred to by "objectId"
+        obj_refers_to = self.getEntityById(row["objectId"])
+
+        #common parameters for all activity objects
+        common_params = {
+            "institute": row['responsible institute'],
+            "person": row['responsible person'],
+            "tools": row['tool'],
+            "start": row['start date'],
+            "end": row['end date'],
+            "refers_to": obj_refers_to
+        }
+
+        #checks the type of activity and creates the corresponding object
+        if activity_type == "acquisition":
+            object = Acquisition(technique=row['technique'], **common_params)
+            result.append(object)
+
+        elif activity_type == "processing":
+            object = Processing(**common_params)
+            result.append(object)
+
+        elif activity_type == "modelling":
+            object = Modelling(**common_params)
+            result.append(object)
+
+        elif activity_type == "optimising":
+            object = Optimising(**common_params)
+            result.append(object)
+
+        elif activity_type == "exporting":
+            object = Exporting(**common_params)
+            result.append(object)
+
+    return result
+
+
+def getAcquisitionsByTechnique(self, partialName: str) -> List[Any]:
+    result = []
+    handler_list = self.processQuery  #gets also the list of process handlers
+    df_list = []  #empty list to store the DataFrames of activities
+
+    #loop over each process handler
+    for handler in handler_list:
+        df_list.append(handler.getActivities())  #adds the activities of the handler to the list of DataFrames
+
+    #concatenates all DataFrames, removes duplicates, and fills missing values with empty strings
+    df_union = pd.concat(df_list, ignore_index=True).drop_duplicates().fillna("")
+
+    #filter acquisitions that contain the partial name in the technique field
+    df_filtered = df_union[df_union["technique"].str.contains(partialName, case=False, na=False)]
+
+    #loop over each row of the filtered DataFrame
+    for _, row in df_filtered.iterrows():
+        #splits the "internalId" field to get the type and id
+        activity_type, id = row["internalId"].split("-")
+        #gets the entity referred to by "objectId"
+        obj_refers_to = self.getEntityById(row["objectId"])
+
+        # Common parameters for all acquisition objects
+        common_params = {
+            "institute": row['responsible institute'],
+            "person": row['responsible person'],
+            "tools": row['tool'],
+            "start": row['start date'],
+            "end": row['end date'],
+            "technique": row['technique'],
+            "refers_to": obj_refers_to
+        }
+
+        if activity_type == "acquisition":
+            object = Acquisition(**common_params)
+            result.append(object)
+
+    return result
+
+
