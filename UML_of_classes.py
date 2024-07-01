@@ -615,7 +615,7 @@ def getActivitiesByResponsibleInstitution(self, partialName):
         # Gets the entity referred to by "objectId"
         obj_refers_to = self.getEntityById(row["objectId"])
 
-        # Common parameters for all activity objects -- matching data model e existing data from queries according to the method getallactivities
+        # Common parameters for all activity objects -- matching data model e existing data from queries according to the method getActivitiesByResponsibleInstitution
         common_params = {
             "institute": row['responsible institute'],
             "person": row['responsible person'],
@@ -668,7 +668,7 @@ def getgetActivitiesByResponsiblePerson(self, partialName):
         # Gets the entity referred to by "objectId"
         obj_refers_to = self.getEntityById(row["objectId"])
 
-        # Common parameters for all activity objects -- matching data model e existing data from queries according to the method getallactivities
+        # Common parameters for all activity objects -- matching data model e existing data from queries according to the method getgetActivitiesByResponsiblePerson
         common_params = {
             "institute": row['responsible institute'],
             "person": row['responsible person'],
@@ -722,7 +722,7 @@ def getActivitiesUsingTool(self, partialName: str):
         # Gets the entity referred to by "objectId"
         obj_refers_to = self.getEntityById(row["objectId"])
 
-        # Common parameters for all activity objects -- matching data model e existing data from queries according to the method getallactivities
+        # Common parameters for all activity objects -- matching data model e existing data from queries according to the method getActivitiesUsingTool
         common_params = {
             "institute": row['responsible institute'],
             "person": row['responsible person'],

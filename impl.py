@@ -790,7 +790,7 @@ process_upload = ProcessDataUploadHandler()
 process_upload.createTablesActivity('process.json', 'meta.csv')
 
 
-_____________QUERIES_____________________________
+#_____________QUERIES_____________________________
 
 class QueryHandler(Handler): #Elena
     def __init__(self):
@@ -1012,7 +1012,7 @@ class ProcessDataQueryHandler(QueryHandler):
             return None
 
         
-__________________________ TESTS ___________________________
+#__________________________ TESTS ___________________________
 
 #Calling all the functions:
 process_query = ProcessDataQueryHandler()
