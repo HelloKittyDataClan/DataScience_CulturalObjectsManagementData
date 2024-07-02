@@ -111,7 +111,7 @@ class Map(CulturalHeritageObject):
 
 #Creation of class Person that refers to CulturalObject
 class Person(IdentifiableEntity):
-    def __init__(self, name: str): #define parameter name
+    def __init__(self, id: str; name: str): # Modificato per includere l'ID
         super().__init__(id)
         if not isinstance(name, str):
             raise ValueError("Name must be a string for the Person")
