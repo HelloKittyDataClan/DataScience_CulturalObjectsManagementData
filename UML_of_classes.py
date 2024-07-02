@@ -548,9 +548,60 @@ class BasicMashup:
                 all_objects.append(obj)
         
         return all_objects
-    
 
-#elena
+     def getCulturalHeritageObjectsAuthoredBy(self, person_id: str) -> List[CulturalHeritageObject]:
+        if not self.metadata_query_handlers:
+            raise ValueError("No metadata query handlers set.")
+    
+        object_list = []
+    
+        for handler in self.metadata_query_handlers:
+            objects_df = handler.getCulturalHeritageObjectsAuthoredBy(person_id)
+        
+            for _, row in objects_df.iterrows():
+                id = row['id']
+                title = row['title']
+                date = row.get('date')
+                owner = row['owner']
+                place = row['place']
+                author_name = row['authorName']
+                author_id = row['authorID']
+                author = Person(id=author_id, name=author_name)
+
+                obj_type = row['type'].split('/')[-1]
+                cultural_obj = None
+
+        
+                if obj_type == 'Map':
+                    cultural_obj = Map(id=id, title=title, owner=owner, place=place, date=date, authors=[author])
+                elif obj_type == 'Painting':
+                    cultural_obj = Painting(id=id, title=title, owner=owner, place=place, date=date, authors=[author])
+                elif obj_type == 'Model':
+                    cultural_obj = Model(id=id, title=title, owner=owner, place=place, date=date, authors=[author])
+                elif obj_type == 'Specimen':
+                    cultural_obj = Specimen(id=id, title=title, owner=owner, place=place, date=date, authors=[author])
+                elif obj_type == 'Herbarium':
+                    cultural_obj = Herbarium(id=id, title=title, owner=owner, place=place, date=date, authors=[author])
+                elif obj_type == 'PrintedMaterial':
+                    cultural_obj = PrintedMaterial(id=id, title=title, owner=owner, place=place, date=date, authors=[author])
+                elif obj_type == 'PrintedVolume':
+                    cultural_obj = PrintedVolume(id=id, title=title, owner=owner, place=place, date=date, authors=[author])
+                elif obj_type == 'ManuscriptVolume':
+                    cultural_obj = ManuscriptVolume(id=id, title=title, owner=owner, place=place, date=date, authors=[author])
+                elif obj_type == 'ManuscriptPlate':
+                    cultural_obj = ManuscriptPlate(id=id, title=title, owner=owner, place=place, date=date, authors=[author])
+                elif obj_type == 'NauticalChart':
+                    cultural_obj = NauticalChart(id=id, title=title, owner=owner, place=place, date=date, authors=[author])
+                else:
+                    cultural_obj = CulturalHeritageObject(id=id, title=title, owner=owner, place=place, date=date, authors=[author])
+            
+                object_list.append(cultural_obj)
+
+        return object_list
+
+        
+
+#ELENA
 def getAllActivities(self):
     result = []
     handler_list = self.processQuery  # Gets the list of process handlers
