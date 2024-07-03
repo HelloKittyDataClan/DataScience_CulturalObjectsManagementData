@@ -429,16 +429,6 @@ class BasicMashup:
         self.metadata_query_handlers = []
         self.processQuery = []
 
-    def addMetadataHandler(self, handler: MetadataQueryHandler) -> bool:
-        self.metadata_query_handlers.append(handler)
-        return True
-
-    def addProcessHandler(self, processHandler:ProcessDataQueryHandler) -> bool:
-        if not isinstance(Handler, ProcessDataQueryHandler):
-            return False
-        else:
-            return self.processQuery.append(processHandler)  # Adds a process handler to the list
-
     def cleanMetadataHandlers0(self) -> bool:
         self.metadataHandlers.clear()  #clear the metadata handlers list
         return True
@@ -446,7 +436,17 @@ class BasicMashup:
     def cleanProcessHandlers0(self) -> bool:
         self.processQuery.clear()  #clear the process handlers list
         return True
-    
+
+    def addMetadataHandler(self, handler: MetadataQueryHandler) -> bool:
+        self.metadata_query_handlers.append(handler)
+        return True
+
+    def addProcessHandler(self, handler:ProcessDataQueryHandler) -> bool:
+        if not isinstance(handler, ProcessDataQueryHandler):
+        # check if handler is an istance of processdataqueryhandler (prevention)
+            return False
+        else:
+            return self.processQuery.append(handler)  # Adds a process handler to the list
     
     def getEntityById(self, id: str) -> Optional[IdentifiableEntity]:      #ritorna un oggetto della classe IdentifiableEntity identificando l'entità corrispondente all'identificatore dato nelle basi dati accessibili tramite i gestori di query; se non viene trovata nessuna entità con l'identificatore dato, ritorna None, assicurando che l'oggetto restituito appartenga alla classe appropriata.        
         for handler in self.metadata_query_handlers:
@@ -549,7 +549,7 @@ class BasicMashup:
         
         return all_objects
 
-     def getCulturalHeritageObjectsAuthoredBy(self, person_id: str) -> List[CulturalHeritageObject]:
+def getCulturalHeritageObjectsAuthoredBy(self, person_id: str) -> List[CulturalHeritageObject]:
         if not self.metadata_query_handlers:
             raise ValueError("No metadata query handlers set.")
     
@@ -602,25 +602,45 @@ class BasicMashup:
         
 
 #ELENA
+# mash up = when you fullifll you data model with the data from your queries 
 def getAllActivities(self):
     result = []
-    handler_list = self.processQuery  # Gets the list of process handlers
-    df_list = []  # List to store the DataFrames of activities
+    handler_list = self.processQuery  # Gets the list of process handlers 
+    # process query is an empty variable that collects all the connections to the db
+    # 
+    df_list = []  # List to store the DataFrames of activities 
 
     # Loop over each process handler
+    # for each process data query handler in each relationsal databases we have, now we just have one, but just in case
     for handler in handler_list:
         df_list.append(handler.getAllActivities())  # Adds the activities of the handler to the list of DataFrames
+    # in which class the getallactivities method belong to? to processdataqueryhandler
 
     # Concatenates all DataFrames, removes duplicates, and fills missing values with empty strings
     df_union = pd.concat(df_list, ignore_index=True).drop_duplicates().fillna("")
+    # i create a new dataframe with all the df.list(now it is one cause i have one db)
+    # drop.duplicates is an operation that removes duplicates
+    # na is when you dont have data in row and column --> fillna replaces it with empty cell, prevention of mistake that can break the execution of the software
+    # df union is a dataframe -- pd.concat (panda concatenates, even if is just one dataframe)
+    # ignore index true - in each df to each row there is an id. if i have more than one df it is a mess because id of each row are the same, 
+    # so i ignore the index. i put it here beacuse it is in the step of creaiton of the new df
+    # ignore index is the condition. if it says true he does it, if false he odesn't do it
 
     # Loop over each row of the concatenated DataFrame
     for _, row in df_union.iterrows():
+        # _ ignore the indexes and go through each row
+        # iterrow goes through each row and its an operation
         # Splits the "internalId" field to get the type and id
-        activity_type, id = row["internalId"].split("-")
-        # Gets the entity referred to by "objectId"
-        obj_refers_to = self.getEntityById(row["objectId"])
 
+    # TROVO ID DELLA ACTIVITY
+        activity_type, id = row["internalId"].split("-")
+        # in each column i have the activity id so this is how i retrieve the activity type. 
+        # Gets the entity referred to by "objectId"
+        # to get access to colu8mn internalid and spli type of activity and its id
+        obj_refers_to = self.getEntityById(row["objectId"])
+        # get access to object id that refers to this specific actiivty by using the getentintybyid method
+
+        # THIS IS THE CONDITIONS
         # Common parameters for all activity objects -- matching data model e existing data from queries according to the method getallactivities
         common_params = {
             "institute": row['responsible institute'],
@@ -630,7 +650,13 @@ def getAllActivities(self):
             "end": row['end date'],
             "refers_to": obj_refers_to
         }
+        # after that you fullfill your institue class in your data model
+        # match attributes in activity classes of the data model with common params
+        # institute= attribute of class in data model
+        # row [responsible inst] quindi i add the results of tyhe intersection/cell (okay row but not understandable) of the df to the dm 
 
+        #MATCH ACTIVITY TYPE WITH THE INSTRUCTIONS COMMON PARASMS
+        # the conditions are all the ifs
         # Checks the type of activity and creates the corresponding object
         if activity_type == "acquisition":
             object = Acquisition(technique=row['technique'], **common_params)

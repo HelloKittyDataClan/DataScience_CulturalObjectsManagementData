@@ -183,8 +183,9 @@ class ProcessDataQueryHandler(QueryHandler):
         try:
             # Modify the partialName parameter to include "wildcard characters" for partial matching
             # nell'input se inserisco anche solo un risultato parziale mi compare comunque
-            with connect(self.getDbPathOrUrl()) as con:
-                # Connect to the database #modific con la parte di catalina
+            with connect(self.getDbPathOrUrl()) as con: # metodo ereditato dal query handler, posso connettere al path del relational database graze al getDbPathOrUrl 
+                # with / as = construction from panda
+               # adds every colums from every table 
                 query = """
                     SELECT InternalId, "responsible institute", "responsible person", tool, "start date", "end date", objectId, technique
                     FROM acquisition
@@ -201,6 +202,8 @@ class ProcessDataQueryHandler(QueryHandler):
                     SELECT InternalId, "responsible institute", "responsible person", tool, "start date", "end date", objectId, NULL AS technique
                     FROM exporting
                 """
+                # pd = panda
+                # pd.read_sql(query, con) executes the SQL query against the database using the connection con and returns the result as a pandas DataFrame (result of a query)
                 result = pd.read_sql(query, con)
                 return result
         except Exception as e:
@@ -214,6 +217,7 @@ class ProcessDataQueryHandler(QueryHandler):
             # nell'input se inserisco anche solo un risultato parziale mi compare comunque
 
             partial_name = f"%{partialName}%"
+            # allow me to do the partial match
             
             # Connect to the database #modific con la parte di catalina
             with connect(self.getDbPathOrUrl()) as con:
@@ -242,8 +246,12 @@ class ProcessDataQueryHandler(QueryHandler):
                 WHERE "responsible institute" LIKE ?
                 """
                 # Execute the query with the provided parameters
+                # ? = filtration according to the input, non ce l'ho in getallactivities perchè mi riporta tutte le attività
+                # qui ce l'ho perchè voglio info solo da un tipo di colonna specifica del db che è responsible institute
                 query2_table = pd.read_sql(query2, con, params=[partial_name]*5)
+                # The params argument is a list of parameters to be used in the SQL query. Since there are 5 ? placeholders in the query (one for each UNION segment), the list [partial_name]*5 is used to provide the same partial_name parameter for each placeholder.
                 return query2_table
+            #  The result of the query is returned as a pandas DataFrame and assigned to the variable query2_table.
         except Exception as e:
             print("An error occurred:", e)
             return None
