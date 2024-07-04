@@ -397,11 +397,7 @@ class MetadataQueryHandler(QueryHandler):
     def __init__(self, grp_dbUrl: str):
         super().__init__(dbPathOrUrl = grp_dbUrl)
 
-    
-
-
-
-    
+   
     def getById(self, id):
         person_query_str = """
             SELECT DISTINCT ?uri ?name ?id 
@@ -494,7 +490,7 @@ class MetadataQueryHandler(QueryHandler):
             ))
         }
         """
-       results = get(self.dbPathOrUrl + "sparql",query, True)
+        results = get(self.dbPathOrUrl + "sparql", query, True)
         return results       
     
 
@@ -699,7 +695,7 @@ class BasicMashup:
                 result.append(object)   
         return result
 
-     def getCulturalHeritageObjectsAuthoredBy(self, person_id: str) -> List[CulturalHeritageObject]:     #leggera modifica 
+    def getCulturalHeritageObjectsAuthoredBy(self, person_id: str) -> List[CulturalHeritageObject]:     #leggera modifica 
         if not self.metadataQuery:
             raise ValueError("No metadata query handlers set.")
     
