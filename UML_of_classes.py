@@ -563,15 +563,15 @@ class BasicMashup:
         self.metadataQuery = []
         return True
 
-    def cleanProcessHandlers(self) -> bool:
+    def cleanProcessHandlers(self) -> bool:      #cata
         self.processQuery.clear()  #clear the process handlers list
         return True
 
-    def addMetadataHandler(self, handler: MetadataQueryHandler) -> bool:
+    def addMetadataHandler(self, handler: MetadataQueryHandler) -> bool:     #bea
         self.metadataQuery.append(handler)
         return True
 
-    def addProcessHandler(self, handler:ProcessDataQueryHandler) -> bool:
+    def addProcessHandler(self, handler:ProcessDataQueryHandler) -> bool:   #elena
         if not isinstance(handler, ProcessDataQueryHandler):
         # check if handler is an istance of processdataqueryhandler (prevention)
             return False
@@ -754,11 +754,10 @@ def getAllActivities(self):
     result = []
     handler_list = self.processQuery  # Gets the list of process handlers 
     # process query is an empty variable that collects all the connections to the db
-    # 
     df_list = []  # List to store the DataFrames of activities 
 
     # Loop over each process handler
-    # for each process data query handler in each relationsal databases we have, now we just have one, but just in case
+    # for each process data query handler in each relationsal databases that we have, now we just have one, but just in case
     for handler in handler_list:
         df_list.append(handler.getAllActivities())  # Adds the activities of the handler to the list of DataFrames
     # in which class the getallactivities method belong to? to processdataqueryhandler
