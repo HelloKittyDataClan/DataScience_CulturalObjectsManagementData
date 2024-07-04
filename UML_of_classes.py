@@ -397,30 +397,9 @@ class MetadataQueryHandler(QueryHandler):
     def __init__(self, grp_dbUrl: str):
         super().__init__(dbPathOrUrl = grp_dbUrl)
 
-    def get(self, query, parse_results=True):
-        sparql = SPARQLWrapper(self.dbPathOrUrl + "sparql")        #modificata leggeremente per renderla più robusta e comprensibile 
-        sparql.setReturnFormat(JSON)
-        sparql.setQuery(query)
+    
 
-        try:
-            sparql_result = sparql.queryAndConvert()
-            if parse_results:
-                if 'head' not in sparql_result or 'results' not in sparql_result:
-                    return pd.DataFrame()
 
-                df_columns = sparql_result["head"]["vars"]
-                rows = []
-                for result in sparql_result["results"]["bindings"]:
-                    row_dict = {column: result[column]["value"] if column in result else None for column in df_columns}
-                    rows.append(row_dict)
-                df = pd.DataFrame(rows, columns=df_columns)
-                return df
-            else:
-                return sparql_result  
-
-        except Exception as e:
-            print(f"Error executing SPARQL query: {e}")
-            return pd.DataFrame()   
 
     
     def getById(self, id):
@@ -453,15 +432,16 @@ class MetadataQueryHandler(QueryHandler):
             }
 
         """ % id
-        person_df = self.get(person_query_str)
-        object_df = self.get(object_query_str)
+        results_person = self.get(self.dbPathOrUrl + "sparql", person_query_str, True)
+        results_object = self.get(self.dbPathOrUrl + "sparql", object_query_str, True)
 
-        if person_df.empty and object_df.empty:
-            return pd.DataFrame()  # Return an empty DataFrame if no results
+        combined_results = {
+            'person': results_person,
+            'object': results_object
+        }
 
-        combined_df = pd.concat([person_df, object_df], ignore_index=True)
-        return combined_df
-    
+        return combined_results
+        
     
     def getAllPeople(self):
         query = """
@@ -475,16 +455,8 @@ class MetadataQueryHandler(QueryHandler):
                  FOAF:name ?author_name .
         }
         """
-        results = self.get(query, parse_results=True)  # Esegui la query SPARQL
-
-        # Costruisci il DataFrame a partire dai risultati della query
-        if results.empty:
-            return pd.DataFrame()  # Ritorna un DataFrame vuoto se non ci sono risultati
-
-        # Costruisci il DataFrame utilizzando i dati ottenuti
-        df = pd.DataFrame(results, columns=['uri', 'author_name', 'author_id'])  # Aggiungi altre colonne se necessario
-
-        return df
+        results = get(self.dbPathOrUrl + "sparql",query, True)
+        return results
 
     
     def getAllCulturalHeritageObjects(self):
@@ -522,8 +494,8 @@ class MetadataQueryHandler(QueryHandler):
             ))
         }
         """
-        return self.get(query)
-       
+       results = get(self.dbPathOrUrl + "sparql",query, True)
+        return results       
     
 
     def getAuthorsOfCulturalHeritageObject(self, object_id: str) -> pd.DataFrame:        #modifica per ottenere un object id con la query giusta
@@ -540,9 +512,8 @@ class MetadataQueryHandler(QueryHandler):
                foaf:name ?authorName .
         }} 
         """
-
-        return self.get(query)
-
+        results = get(self.dbPathOrUrl + "sparql",query, True)
+        return results
 
     
     def getCulturalHeritageObjectsAuthoredBy(self, personid: str) -> pd.DataFrame:
@@ -581,9 +552,8 @@ class MetadataQueryHandler(QueryHandler):
             ))
         }}
         """
-
-        return self.get(query)
-
+        results = get(self.dbPathOrUrl + "sparql",query, True)
+        return results
 
 
 #BasicMashup
@@ -711,6 +681,8 @@ class BasicMashup:
                 all_objects.append(obj)
         
         return all_objects
+
+        
     
     def getAuthorsOfCulturalHeritageObject(self, id)->list[Person]:  #chiara          
         result = []
@@ -727,56 +699,57 @@ class BasicMashup:
                 result.append(object)   
         return result
 
-    def getCulturalHeritageObjectsAuthoredBy(self, person_id: str) -> List[CulturalHeritageObject]:
-            if not self.metadataQuery:
-                raise ValueError("No metadata query handlers set.")
+     def getCulturalHeritageObjectsAuthoredBy(self, person_id: str) -> List[CulturalHeritageObject]:     #leggera modifica 
+        if not self.metadataQuery:
+            raise ValueError("No metadata query handlers set.")
     
-            object_list = []
+        object_list = []
     
-            for handler in self.metadataQuery:
-                objects_df = handler.getCulturalHeritageObjectsAuthoredBy(person_id)
+        for handler in self.metadataQuery:
+            objects_df = handler.getCulturalHeritageObjectsAuthoredBy(person_id)
         
-                for _, row in objects_df.iterrows():
-                    id = row['id']
-                    title = row['title']
-                    date = row.get('date')
-                    owner = row['owner']
-                    place = row['place']
-                    author_name = row['authorName']
-                    author_id = row['authorID']
-                    author = Person(id=author_id, name=author_name)
+            for _, row in objects_df.iterrows():
+                id = str(row['id'])  # Ensure ID is a string
+                title = row['title']
+                date = row.get('date')
+                if date is not None and not isinstance(date, str):
+                    date = str(date)  # Convert date to string if it's not None and not already a string
+                owner = row['owner']
+                place = row['place']
+                author_name = row['authorName']
+                author_id = str(row['authorID'])  # Ensure author ID is a string
+                author = Person(id=author_id, name=author_name)
 
-                    obj_type = row['type'].split('/')[-1]
-                    cultural_obj = None
-
-        
-                    if obj_type == 'Map':
-                        cultural_obj = Map(id=id, title=title, owner=owner, place=place, date=date, authors=[author])
-                    elif obj_type == 'Painting':
-                        cultural_obj = Painting(id=id, title=title, owner=owner, place=place, date=date, authors=[author])
-                    elif obj_type == 'Model':
-                        cultural_obj = Model(id=id, title=title, owner=owner, place=place, date=date, authors=[author])
-                    elif obj_type == 'Specimen':
-                        cultural_obj = Specimen(id=id, title=title, owner=owner, place=place, date=date, authors=[author])
-                    elif obj_type == 'Herbarium':
-                        cultural_obj = Herbarium(id=id, title=title, owner=owner, place=place, date=date, authors=[author])
-                    elif obj_type == 'PrintedMaterial':
-                        cultural_obj = PrintedMaterial(id=id, title=title, owner=owner, place=place, date=date, authors=[author])
-                    elif obj_type == 'PrintedVolume':
-                        cultural_obj = PrintedVolume(id=id, title=title, owner=owner, place=place, date=date, authors=[author])
-                    elif obj_type == 'ManuscriptVolume':
-                        cultural_obj = ManuscriptVolume(id=id, title=title, owner=owner, place=place, date=date, authors=[author])
-                    elif obj_type == 'ManuscriptPlate':
-                        cultural_obj = ManuscriptPlate(id=id, title=title, owner=owner, place=place, date=date, authors=[author])
-                    elif obj_type == 'NauticalChart':
-                        cultural_obj = NauticalChart(id=id, title=title, owner=owner, place=place, date=date, authors=[author])
-                    else:
-                        cultural_obj = CulturalHeritageObject(id=id, title=title, owner=owner, place=place, date=date, authors=[author])
+                obj_type = row['type'].split('/')[-1]
+                cultural_obj = None
             
-                    object_list.append(cultural_obj)
+           
+                if obj_type == 'NauticalChart':
+                    cultural_obj = NauticalChart(id=id, title=title, owner=owner, place=place, date=date, authors=[author])
+                elif obj_type == 'ManuscriptPlate':
+                    cultural_obj = ManuscriptPlate(id=id, title=title, owner=owner, place=place, date=date, authors=[author])
+                elif obj_type == 'ManuscriptVolume':
+                    cultural_obj = ManuscriptVolume(id=id, title=title, owner=owner, place=place, date=date, authors=[author])
+                elif obj_type == 'PrintedVolume':
+                    cultural_obj = PrintedVolume(id=id, title=title, owner=owner, place=place, date=date, authors=[author])
+                elif obj_type == 'PrintedMaterial':
+                    cultural_obj = PrintedMaterial(id=id, title=title, owner=owner, place=place, date=date, authors=[author])
+                elif obj_type == 'Herbarium':
+                    cultural_obj = Herbarium(id=id, title=title, owner=owner, place=place, date=date, authors=[author])
+                elif obj_type == 'Specimen':
+                    cultural_obj = Specimen(id=id, title=title, owner=owner, place=place, date=date, authors=[author])
+                elif obj_type == 'Painting':
+                    cultural_obj = Painting(id=id, title=title, owner=owner, place=place, date=date, authors=[author])
+                elif obj_type == 'Model':
+                    cultural_obj = Model(id=id, title=title, owner=owner, place=place, date=date, authors=[author])
+                elif obj_type == 'Map':
+                    cultural_obj = Map(id=id, title=title, owner=owner, place=place, date=date, authors=[author])
+                else:
+                    cultural_obj = CulturalHeritageObject(id=id, title=title, owner=owner, place=place, date=date, authors=[author])
+            
+                object_list.append(cultural_obj)
 
-            return object_list
-
+        return object_list
         
 
 #ELENA
