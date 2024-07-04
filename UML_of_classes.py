@@ -7,11 +7,178 @@ import pandas as pd
 import csv
 from processQueryData import ProcessDataQueryHandler
 from UML_dataModel import Acquisition, Processing, Modelling, Optimising, Exporting
+from sparql_dataframe import get
+from typing import Optional, List, Any
 
 
+class IdentifiableEntity(object): #identifichiamo l'ID
+    def __init__(self, id: str):
+        if not isinstance(id, str): #se l'ID non è una stringa
+            raise ValueError("ID must be a string for the IdentifiableEntity")
+        self.id = id #deve essere necessariamente una stringa cosi che l'ID sia valido sempre
+
+    def get_id(self):
+        return self.id
+
+#___________________________CSV_________________________
+
+class CulturalHeritageObject(IdentifiableEntity):
+    def __init__(self, id:str, title:str, owner:str, place:str, date:str= None,authors:list=None): #vado a definire title, date, owner, place, Author  del mio csv 
+        super().__init__(id)  #cosi facendo vado a richiamare l'ID della classe IdentifiableEntity
+        if not isinstance(title, str):
+            raise ValueError("Title must be a string for the CulturalObject")
+        if not isinstance(owner, str):
+            raise ValueError("Owner must be a string for the CulturalObject")
+        if not isinstance(place, str):
+            raise ValueError("Place must be a string for the CulturalObject")
+        if date is not None and not isinstance(date, str):
+            raise ValueError("Date must be a string or None for the CulturalObject")
+        if authors is not None:
+            if not all(isinstance(author, Person) for author in authors):
+                raise ValueError("Authors must be instances of Person or None for the CulturalObject")    # garantisce che gli autori forniti per il nostro oggetto culturale siano parte della classe Person
+        
+        self.title=title
+        self.date=date
+        self.owner=owner
+        self.place=place
+        self.authors=[]    #lista vuota assegnata all'attributo authors 
+
+        if authors:
+            if isinstance(authors, Person):
+                self.authors.append(authors)
+            elif isinstance(authors, list):
+                self.authors.extend(authors)       #si occupa di aggiungere gli autori forniti all'oggetto culturale CulturalObject, gestendo sia il caso in cui sia fornito un singolo autore come istanza di Person, sia il caso in cui siano forniti più autori come lista di istanze di Person.
+   
+    def getTitle(self):
+        return self.title
+
+    def getDate(self):
+        if self.date:
+           return self.date
+        return None
+        
+    def getOwner(self):
+        return self.owner
+
+    def getPlace(self):
+        return self.place
+
+    def getAuthors(self):
+        return self.authors
 
 
-class Handler:  # Chiara
+#definiamo le sottoclassi relative alla classe Cultrual Object   
+class NauticalChart(CulturalHeritageObject):
+    pass
+
+class ManuscriptPlate(CulturalHeritageObject):
+    pass
+
+class ManuscriptVolume(CulturalHeritageObject):
+    pass
+
+class PrintedVolume(CulturalHeritageObject):
+    pass
+
+class PrintedMaterial(CulturalHeritageObject):
+    pass
+
+class Herbarium(CulturalHeritageObject):
+    pass
+
+class Specimen(CulturalHeritageObject):
+    pass
+
+class Painting(CulturalHeritageObject):
+    pass
+
+class Model(CulturalHeritageObject):
+    pass
+
+class Map(CulturalHeritageObject):
+    pass
+
+#____________________ JSON______________________
+
+#Creation of class Person that refers to CulturalHeritageObject
+class Person(IdentifiableEntity):
+    def __init__(self, name: str): #define parameter name
+        super().__init__(id)
+        if not isinstance(name, str):
+            raise ValueError("Name must be a string for the Person")
+        self.name = name
+    
+    def getName(self):
+        return self.name
+
+#Creation of class Activity that refers to CulturalHeritageObject
+class Activity():                               
+    def _init_(self, institute: str, person: str= None, tool: str|set[str]|None = None, start: str = None, end: str = None): 
+        super().__init__()  # Initialize (replace with appropriate values)
+        if not isinstance(institute, str):
+            raise ValueError("Institute must be a string for the Activity")
+        if person is not None and not isinstance(person, str):
+            raise ValueError("Person must be a string or None for the Activity")
+        if not isinstance(tool, str, set[str]):
+            raise ValueError("Tool must be a string or a set of strings for the Activity")
+        if start is not None and not isinstance(start, str):
+            raise ValueError("Start Date must be a string or None for the Activity")
+        if end is not None and not isinstance(start, str):
+            raise ValueError("End Date must be a string or None for the Activity")
+        self.institute = institute
+        self.person = person
+        self.tool = tool         
+        self.start = start
+        self.end = end
+        
+    def getResponsibleInstitute(self):
+        return self.institute
+    
+    def getResponsiblePerson(self):
+        return self.person
+
+    def getTools(self):
+        return self.tool
+    
+    def getStartDate(self):
+        return self.start 
+    
+    def getEndDate(self):
+        return self.end
+    
+    def refersTo(self, CulturalObject):     #---->>>non si riferisce a nessun oggetto e non ti ritorna nulla, TI DEVE RITORNARE CULTURAL OBJECT!!
+        if isinstance(CulturalObject):
+            self.title.append(CulturalObject)
+        else:
+            raise ValueError("Invalid object type provided")
+
+#Subclass of Activity just with technique parameter
+
+class Acquisition(Activity):
+    def _init_(self, technique: str):   
+        super().__init__() 
+        if not isinstance(technique, str):
+            raise ValueError("Acquisition.technique must be a string")
+        self.technique = technique
+        
+    def getTechnique(self):
+        return self.technique
+
+#Subclasses without defined parameters
+class Processing(Activity):
+    pass
+        
+class Modelling(Activity):
+    pass
+
+class Optimising(Activity):
+    pass
+
+class Exporting(Activity):
+    pass
+
+
+class Handler(object):  # Chiara
     def __init__(self):
         self.dbPathOrUrl = ""
 
@@ -216,6 +383,16 @@ WHERE {
 
 # java -server -Xmx1g -jar blazegraph.jar (terminal command to run Blazegraph)
 #Bea
+
+
+class QueryHandler(Handler):                    #RIVEDERE
+    def __init__(self, dbPathOrUrl:str = ""):
+       self.dbPathOrUrl = dbPathOrUrl
+
+    def getById(self, id: str):
+        pass
+
+
 class MetadataQueryHandler(QueryHandler):
     def __init__(self, grp_dbUrl: str):
         super().__init__(dbPathOrUrl = grp_dbUrl)
@@ -245,8 +422,6 @@ class MetadataQueryHandler(QueryHandler):
             print(f"Error executing SPARQL query: {e}")
             return pd.DataFrame()   
 
-
-   
     
     def getById(self, id):
         person_query_str = """
@@ -311,14 +486,6 @@ class MetadataQueryHandler(QueryHandler):
 
         return df
 
-     
-    
-
-
-
-
-    
-    
     
     def getAllCulturalHeritageObjects(self):
         query = """
@@ -358,9 +525,6 @@ class MetadataQueryHandler(QueryHandler):
         return self.get(query)
        
     
-        
-
-
 
     def getAuthorsOfCulturalHeritageObject(self, object_id: str) -> pd.DataFrame:        #modifica per ottenere un object id con la query giusta
         query = f"""
@@ -425,20 +589,20 @@ class MetadataQueryHandler(QueryHandler):
 #BasicMashup
 
 class BasicMashup:
-    def __init__(self):
-        self.metadata_query_handlers = []
-        self.processQuery = []
-
-    def cleanMetadataHandlers0(self) -> bool:
-        self.metadataHandlers.clear()  #clear the metadata handlers list
+    def __init__(self) -> None:
+        self.metadataQuery = list()
+        self.processQuery = list()
+    
+    def cleanMetadataHandlers(self) -> bool:    #chiara
+        self.metadataQuery = []
         return True
 
-    def cleanProcessHandlers0(self) -> bool:
+    def cleanProcessHandlers(self) -> bool:
         self.processQuery.clear()  #clear the process handlers list
         return True
 
     def addMetadataHandler(self, handler: MetadataQueryHandler) -> bool:
-        self.metadata_query_handlers.append(handler)
+        self.metadataQuery.append(handler)
         return True
 
     def addProcessHandler(self, handler:ProcessDataQueryHandler) -> bool:
@@ -449,7 +613,7 @@ class BasicMashup:
             return self.processQuery.append(handler)  # Adds a process handler to the list
     
     def getEntityById(self, id: str) -> Optional[IdentifiableEntity]:      #ritorna un oggetto della classe IdentifiableEntity identificando l'entità corrispondente all'identificatore dato nelle basi dati accessibili tramite i gestori di query; se non viene trovata nessuna entità con l'identificatore dato, ritorna None, assicurando che l'oggetto restituito appartenga alla classe appropriata.        
-        for handler in self.metadata_query_handlers:
+        for handler in self.metadataQuery:
             result = handler.getById(id)
 
             if not result.empty:
@@ -495,13 +659,11 @@ class BasicMashup:
 
 
     
-    
-    
 
     def getAllPeople(self):                                            #restituisce la lista delle persone 
         # Ottieni tutte le persone usando MetadataQueryHandler
         people = []
-        for handler in self.metadata_query_handlers:
+        for handler in self.metadataQuery:
             people_data = handler.getAllPeople()
             for _, person_data in people_data.iterrows():
                 person = Person(id=person_data['author_id'], name=person_data['author_name'])
@@ -509,11 +671,12 @@ class BasicMashup:
         return people
     
 
+    
 
     def getAllCulturalHeritageObjects(self) -> List[CulturalHeritageObject]:     #restituisce una lista di oggetti della classe CulturalHeritageObject che comprende tutte le entità incluse nel database accessibili tramite i gestori di query, garantendo che gli oggetti nella lista siano della classe appropriata,        
         all_objects = []
 
-        for handler in self.metadata_query_handlers:
+        for handler in self.metadataQuery:
             results = handler.getAllCulturalHeritageObjects()
 
             for _, row in results.iterrows():
@@ -548,56 +711,71 @@ class BasicMashup:
                 all_objects.append(obj)
         
         return all_objects
-
-def getCulturalHeritageObjectsAuthoredBy(self, person_id: str) -> List[CulturalHeritageObject]:
-        if not self.metadata_query_handlers:
-            raise ValueError("No metadata query handlers set.")
     
-        object_list = []
+    def getAuthorsOfCulturalHeritageObject(self, id)->list[Person]:  #chiara          
+        result = []
+        dataf_list = []
+        
+        for handler in self.metadataQuery:
+            dataf_list.append(handler.getAuthorsOfCulturalHeritageObject(id)) 
+        dataf_union = pd.concat(dataf_list, ignore_index=True).fillna("")
+
+        for idx, row in dataf_union.iterrows():
+            author = row['authorName']
+            if author != "":             
+                object = Person(id=row["authorID"],name = row['authorName'])
+                result.append(object)   
+        return result
+
+    def getCulturalHeritageObjectsAuthoredBy(self, person_id: str) -> List[CulturalHeritageObject]:
+            if not self.metadataQuery:
+                raise ValueError("No metadata query handlers set.")
     
-        for handler in self.metadata_query_handlers:
-            objects_df = handler.getCulturalHeritageObjectsAuthoredBy(person_id)
+            object_list = []
+    
+            for handler in self.metadataQuery:
+                objects_df = handler.getCulturalHeritageObjectsAuthoredBy(person_id)
         
-            for _, row in objects_df.iterrows():
-                id = row['id']
-                title = row['title']
-                date = row.get('date')
-                owner = row['owner']
-                place = row['place']
-                author_name = row['authorName']
-                author_id = row['authorID']
-                author = Person(id=author_id, name=author_name)
+                for _, row in objects_df.iterrows():
+                    id = row['id']
+                    title = row['title']
+                    date = row.get('date')
+                    owner = row['owner']
+                    place = row['place']
+                    author_name = row['authorName']
+                    author_id = row['authorID']
+                    author = Person(id=author_id, name=author_name)
 
-                obj_type = row['type'].split('/')[-1]
-                cultural_obj = None
+                    obj_type = row['type'].split('/')[-1]
+                    cultural_obj = None
 
         
-                if obj_type == 'Map':
-                    cultural_obj = Map(id=id, title=title, owner=owner, place=place, date=date, authors=[author])
-                elif obj_type == 'Painting':
-                    cultural_obj = Painting(id=id, title=title, owner=owner, place=place, date=date, authors=[author])
-                elif obj_type == 'Model':
-                    cultural_obj = Model(id=id, title=title, owner=owner, place=place, date=date, authors=[author])
-                elif obj_type == 'Specimen':
-                    cultural_obj = Specimen(id=id, title=title, owner=owner, place=place, date=date, authors=[author])
-                elif obj_type == 'Herbarium':
-                    cultural_obj = Herbarium(id=id, title=title, owner=owner, place=place, date=date, authors=[author])
-                elif obj_type == 'PrintedMaterial':
-                    cultural_obj = PrintedMaterial(id=id, title=title, owner=owner, place=place, date=date, authors=[author])
-                elif obj_type == 'PrintedVolume':
-                    cultural_obj = PrintedVolume(id=id, title=title, owner=owner, place=place, date=date, authors=[author])
-                elif obj_type == 'ManuscriptVolume':
-                    cultural_obj = ManuscriptVolume(id=id, title=title, owner=owner, place=place, date=date, authors=[author])
-                elif obj_type == 'ManuscriptPlate':
-                    cultural_obj = ManuscriptPlate(id=id, title=title, owner=owner, place=place, date=date, authors=[author])
-                elif obj_type == 'NauticalChart':
-                    cultural_obj = NauticalChart(id=id, title=title, owner=owner, place=place, date=date, authors=[author])
-                else:
-                    cultural_obj = CulturalHeritageObject(id=id, title=title, owner=owner, place=place, date=date, authors=[author])
+                    if obj_type == 'Map':
+                        cultural_obj = Map(id=id, title=title, owner=owner, place=place, date=date, authors=[author])
+                    elif obj_type == 'Painting':
+                        cultural_obj = Painting(id=id, title=title, owner=owner, place=place, date=date, authors=[author])
+                    elif obj_type == 'Model':
+                        cultural_obj = Model(id=id, title=title, owner=owner, place=place, date=date, authors=[author])
+                    elif obj_type == 'Specimen':
+                        cultural_obj = Specimen(id=id, title=title, owner=owner, place=place, date=date, authors=[author])
+                    elif obj_type == 'Herbarium':
+                        cultural_obj = Herbarium(id=id, title=title, owner=owner, place=place, date=date, authors=[author])
+                    elif obj_type == 'PrintedMaterial':
+                        cultural_obj = PrintedMaterial(id=id, title=title, owner=owner, place=place, date=date, authors=[author])
+                    elif obj_type == 'PrintedVolume':
+                        cultural_obj = PrintedVolume(id=id, title=title, owner=owner, place=place, date=date, authors=[author])
+                    elif obj_type == 'ManuscriptVolume':
+                        cultural_obj = ManuscriptVolume(id=id, title=title, owner=owner, place=place, date=date, authors=[author])
+                    elif obj_type == 'ManuscriptPlate':
+                        cultural_obj = ManuscriptPlate(id=id, title=title, owner=owner, place=place, date=date, authors=[author])
+                    elif obj_type == 'NauticalChart':
+                        cultural_obj = NauticalChart(id=id, title=title, owner=owner, place=place, date=date, authors=[author])
+                    else:
+                        cultural_obj = CulturalHeritageObject(id=id, title=title, owner=owner, place=place, date=date, authors=[author])
             
-                object_list.append(cultural_obj)
+                    object_list.append(cultural_obj)
 
-        return object_list
+            return object_list
 
         
 
