@@ -1493,5 +1493,16 @@ def getAcquisitionsByTechnique(self, partialName: str) -> List[Any]:
  class AdvancedMashup(BasicMashup):
     def __init__(self):
         super().__init__()
+
+    def getObjectsHandledByResponsibleInstitution(self, institution_name, search_string): #da rivedere la parte Json Activity
+        matched_objects = []
         
+        for activity in self.activities:
+            if activity.getActivitiesByResponsibleInstitution().lower() == institution_name.lower():
+                for cultural_heritage_object in activity.cultural_heritage_objects:
+                    if search_string.lower() in cultural_heritage_object.getTitle().lower():
+                        if isinstance(cultural_heritage_object, CulturalHeritageObject):
+                            matched_objects.append(cultural_heritage_object)
+        
+        return matched_objects        
 
