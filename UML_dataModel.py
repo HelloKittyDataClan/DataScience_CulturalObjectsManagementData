@@ -111,7 +111,7 @@ class Map(CulturalHeritageObject):
 
 #Creation of class Person that refers to CulturalObject
 class Person(IdentifiableEntity):
-    def __init__(self, id: str; name: str): # Modificato per includere l'ID
+    def __init__(self, id: str, name: str): # Modificato per includere l'ID
         super().__init__(id)
         if not isinstance(name, str):
             raise ValueError("Name must be a string for the Person")
@@ -121,14 +121,13 @@ class Person(IdentifiableEntity):
         return self.name
 
 #Creation of class Activity that refers to CulturalObject
-class Activity():                               
-    def _init_(self, institute: str, person: str= None, tool: str|set[str]|None = None, start: str = None, end: str = None): 
-        super().__init__()  # Initialize (replace with appropriate values)
+class Activity(object):                               
+    def __init__(self, institute: str, person: str, tool: str|set[str]|None, start: str, end: str, refers_to): 
         if not isinstance(institute, str):
             raise ValueError("Institute must be a string for the Activity")
         if person is not None and not isinstance(person, str):
             raise ValueError("Person must be a string or None for the Activity")
-        if not isinstance(tool, str, set[str]):
+        if not isinstance(tool, str):
             raise ValueError("Tool must be a string or a set of strings for the Activity")
         if start is not None and not isinstance(start, str):
             raise ValueError("Start Date must be a string or None for the Activity")
@@ -139,6 +138,7 @@ class Activity():
         self.tool = tool         
         self.start = start
         self.end = end
+        self.refers_to = refers_to
         
     def getResponsibleInstitute(self):
         return self.institute
@@ -164,11 +164,11 @@ class Activity():
 #Subclass of Activity just with technique parameter
 
 class Acquisition(Activity):
-    def _init_(self, technique: str):   
-        super().__init__() 
+    def __init__(self, institute: str, person: str, tool: str|set[str]|None, start: str, end: str, technique: str, refers_to): 
+        self.technique = technique
+        super().__init__(institute, person, tool, start, end, refers_to) #for aquisition aggiungiamo il technique quindi la prima volta che lo definiamo è qui, dobbiamo ridichiarare perchè 
         if not isinstance(technique, str):
             raise ValueError("Acquisition.technique must be a string")
-        self.technique = technique
         
     def getTechnique(self):
         return self.technique
