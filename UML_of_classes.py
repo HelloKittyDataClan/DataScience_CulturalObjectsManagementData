@@ -150,9 +150,9 @@ class Activity():
     def getEndDate(self):
         return self.end
     
-    def refersTo(self, CulturalObject):     #---->>>non si riferisce a nessun oggetto e non ti ritorna nulla, TI DEVE RITORNARE CULTURAL OBJECT!!
-        if isinstance(CulturalObject):
-            self.title.append(CulturalObject)
+    def refersTo(self, CulturalHeritageObject):     #---->>>non si riferisce a nessun oggetto e non ti ritorna nulla, TI DEVE RITORNARE CULTURAL HERITAGE OBJECT!!
+        if isinstance(CulturalHeritageObject):
+            self.title.append(CulturalHeritageObject)
         else:
             raise ValueError("Invalid object type provided")
 
@@ -904,7 +904,7 @@ class ProcessDataQueryHandler(QueryHandler):
 
 #BasicMashup
 
-class BasicMashup:
+class BasicMashup(object):
     def __init__(self) -> None:
         self.metadataQuery = list()
         self.processQuery = list()
@@ -1489,4 +1489,9 @@ def getAcquisitionsByTechnique(self, partialName: str) -> List[Any]:
 
     return result
 
+
+ class AdvancedMashup(BasicMashup):
+    def __init__(self):
+        super().__init__()
+        
 
