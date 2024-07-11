@@ -1589,7 +1589,7 @@ class AdvancedMashup:
     def __init__(self):
         self.activities = []  # Lista delle attività
 
-    def getObjectsHandledByResponsibleInstitution(self, partialName: str) -> list:
+    def getObjectsHandledByResponsibleInstitution(self, partialName: str) -> list[CulturalHeritageObject]:
         matched_objects = set()
 
         # Itera su tutte le attività
