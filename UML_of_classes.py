@@ -1597,9 +1597,9 @@ class AdvancedMashup:
             # Controlla se l'attività è gestita dall'istituzione responsabile specificata (anche parzialmente)
             if partialName.lower() in activity.getResponsibleInstitute().lower():
                 # Recupera l'oggetto culturale a cui si riferisce l'attività
-                cultural_object = activity.refersTo()
+                cultural_heritage_object = activity.refersTo()
                 # Aggiungi l'oggetto culturale all'insieme (l'insieme gestisce automaticamente l'unicità basata sull'ID)
-                matched_objects.add(cultural_object)
+                matched_objects.add(cultural_heritage_object)
 
         return list(matched_objects)
 
