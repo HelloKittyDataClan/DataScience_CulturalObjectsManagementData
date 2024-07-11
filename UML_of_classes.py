@@ -1599,8 +1599,8 @@ class AdvancedMashup:
     def __init__(self):
         self.activities = []  # Lista delle attività
 
-    def getObjectsHandledByResponsibleInstitution(self, partialName: str) -> list[CulturalHeritageObject]:
-        matched_objects = set()
+    def getObjectsHandledByResponsibleInstitution(self, partialName: str) -> List[CulturalHeritageObject]:
+        matched_objects = []
 
         # Itera su tutte le attività
         for activity in self.activities:
@@ -1608,10 +1608,14 @@ class AdvancedMashup:
             if partialName.lower() in activity.getResponsibleInstitute().lower():
                 # Recupera l'oggetto culturale a cui si riferisce l'attività
                 cultural_heritage_object = activity.refersTo()
-                # Aggiungi l'oggetto culturale all'insieme (l'insieme gestisce automaticamente l'unicità basata sull'ID)
-                matched_objects.add(cultural_heritage_object)
+                # Verifica il tipo dell'oggetto culturale e aggiungilo alla lista se è appropriato
+                if isinstance(cultural_heritage_object, CulturalHeritageObject):
+                    matched_objects.append(cultural_heritage_object)
 
-        return list(matched_objects)
+        return matched_objects
+
+    
+    
 
 
 #------------------TEST-----------------------------
