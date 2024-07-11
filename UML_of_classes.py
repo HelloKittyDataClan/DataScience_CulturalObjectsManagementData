@@ -27,51 +27,33 @@ class IdentifiableEntity(object): #identifichiamo l'ID
 #___________________________CSV_________________________
 
 class CulturalHeritageObject(IdentifiableEntity):
-    def __init__(self, id:str, title:str, owner:str, place:str, date:str= None,authors:list=None): #vado a definire title, date, owner, place, Author  del mio csv 
-        super().__init__(id)  #cosi facendo vado a richiamare l'ID della classe IdentifiableEntity
-        if not isinstance(title, str):
-            raise ValueError("Title must be a string for the CulturalObject")
-        if not isinstance(owner, str):
-            raise ValueError("Owner must be a string for the CulturalObject")
-        if not isinstance(place, str):
-            raise ValueError("Place must be a string for the CulturalObject")
-        if date is not None and not isinstance(date, str):
-            raise ValueError("Date must be a string or None for the CulturalObject")
-        if authors is not None:
-            if not all(isinstance(author, Person) for author in authors):
-                raise ValueError("Authors must be instances of Person or None for the CulturalObject")    # garantisce che gli autori forniti per il nostro oggetto culturale siano parte della classe Person
-        
-        self.title=title
-        self.date=date
-        self.owner=owner
-        self.place=place
-        self.authors=[]    #lista vuota assegnata all'attributo authors 
+    def __init__(self, id: str, title: str, owner: str, place: str, authors: list[Person], date:str = None):
+        super().__init__(id)
+        self.title = title
+        self.date = date
+        self.owner = owner
+        self.place = place
+        self.authors = authors or []
 
-        if authors:
-            if isinstance(authors, Person):
-                self.authors.append(authors)
-            elif isinstance(authors, list):
-                self.authors.extend(authors)       #si occupa di aggiungere gli autori forniti all'oggetto culturale CulturalObject, gestendo sia il caso in cui sia fornito un singolo autore come istanza di Person, sia il caso in cui siano forniti più autori come lista di istanze di Person.
-   
-    def getTitle(self):
+    def getTitle(self) ->str:
         return self.title
 
     def getDate(self):
-        if self.date:
-           return self.date
-        return None
+        if self.date == "":
+            return None
+        else:
+            return self.date
         
-    def getOwner(self):
+    def getOwner(self) -> str:
         return self.owner
 
-    def getPlace(self):
+    def getPlace(self) -> str:
         return self.place
 
-    def getAuthors(self):
-        return self.authors
+    def getAuthors(self) -> list[Person]:
+        return self.authors 
+    
 
-
-#definiamo le sottoclassi relative alla classe Cultrual Object   
 class NauticalChart(CulturalHeritageObject):
     pass
 
@@ -102,32 +84,11 @@ class Model(CulturalHeritageObject):
 class Map(CulturalHeritageObject):
     pass
 
+
 #____________________ JSON______________________
 
-#Creation of class Person that refers to CulturalObject
-class Person(IdentifiableEntity):
-    def __init__(self, id: str, name: str): # Modificato per includere l'ID
-        super().__init__(id)
-        if not isinstance(name, str):
-            raise ValueError("Name must be a string for the Person")
-        self.name = name
-    
-    def getName(self):
-        return self.name
-
-#Creation of class Activity that refers to CulturalObject
-class Activity(object):                               
-    def __init__(self, institute: str, person: str, tool: str|set[str]|None, start: str, end: str, refers_to): 
-        if not isinstance(institute, str):
-            raise ValueError("Institute must be a string for the Activity")
-        if person is not None and not isinstance(person, str):
-            raise ValueError("Person must be a string or None for the Activity")
-        if not isinstance(tool, str):
-            raise ValueError("Tool must be a string or a set of strings for the Activity")
-        if start is not None and not isinstance(start, str):
-            raise ValueError("Start Date must be a string or None for the Activity")
-        if end is not None and not isinstance(start, str):
-            raise ValueError("End Date must be a string or None for the Activity")
+lass Activity(object):                               
+    def __init__(self, institute: str, person: str, tool: str|set[str]|None, start: str, end: str, refers_to:CulturalHeritageObject):
         self.institute = institute
         self.person = person
         self.tool = tool         
@@ -135,51 +96,92 @@ class Activity(object):
         self.end = end
         self.refers_to = refers_to
         
-    def getResponsibleInstitute(self):
+    def getResponsibleInstitute(self) -> str:
         return self.institute
     
     def getResponsiblePerson(self):
-        return self.person
-
+        if self.person == "":
+            return None
+        else:
+            return self.person
+ 
     def getTools(self):
         return self.tool
     
     def getStartDate(self):
-        return self.start 
+        if self.start == "":
+            return None
+        else:
+            return self.start
     
     def getEndDate(self):
-        return self.end
-    
-    def refersTo(self, CulturalObject):     #---->>>non si riferisce a nessun oggetto e non ti ritorna nulla, TI DEVE RITORNARE CULTURAL OBJECT!!
-        if isinstance(CulturalObject):
-            self.title.append(CulturalObject)
+        if self.end == "":
+            return None
         else:
-            raise ValueError("Invalid object type provided")
-
+            return self.end
+    
+    def refersTo(self) -> CulturalHeritageObject:   #---->>>non si riferisce a nessun oggetto e non ti ritorna nulla, TI DEVE RITORNARE CULTURAL OBJECT!!
+       return self.refers_to
+ 
 #Subclass of Activity just with technique parameter
-
+ 
 class Acquisition(Activity):
-    def __init__(self, institute: str, person: str, tool: str|set[str]|None, start: str, end: str, technique: str, refers_to): 
+    def __init__(self, institute: str, person: str, tool: str|set[str]|None, start: str, end: str, technique: str, refers_to:CulturalHeritageObject):
         self.technique = technique
-        super().__init__(institute, person, tool, start, end, refers_to) #for aquisition aggiungiamo il technique quindi la prima volta che lo definiamo è qui, dobbiamo ridichiarare perchè 
+        super().__init__(institute, person, tool, start, end, refers_to) #for aquisition aggiungiamo il technique quindi la prima volta che lo definiamo è qui, dobbiamo ridichiarare perchè
         if not isinstance(technique, str):
             raise ValueError("Acquisition.technique must be a string")
         
-    def getTechnique(self):
+    def getTechnique(self) -> str:
         return self.technique
-
+ 
 #Subclasses without defined parameters
 class Processing(Activity):
     pass
         
 class Modelling(Activity):
     pass
-
+ 
 class Optimising(Activity):
     pass
-
+ 
 class Exporting(Activity):
     pass
+ 
+#TEST
+if __name__ == "__main__":
+    # Creazione di un'istanza di Person per gli autori
+    author1 = Person("1", "Carracci, Agostino (ULAN:500115349)")
+
+    # Creazione di un oggetto di tipo Painting
+    painting = Painting("13", "Portrait of Ulisse Aldrovandi", "Accademia Carrara", "Bergamo", [author1], "1582-1585")
+
+    # Creazione di un'istanza di Acquisition
+    acquisition = Acquisition("Council", "Alice Liddell", {"Nikon D7200 Nikor 50mm"}, "2023-03-24", "2023-03-24", "Photogrammetry", refers_to=painting)
+
+    # Accesso agli attributi dell'oggetto Acquisition
+    print("Dettagli dell'acquisizione:")
+    print(f"Istituto responsabile: {acquisition.getResponsibleInstitute()}")
+    print(f"Persona responsabile: {acquisition.getResponsiblePerson()}")
+    print(f"Strumenti: {acquisition.getTools()}")
+    print(f"Data di inizio: {acquisition.getStartDate()}")
+    print(f"Data di fine: {acquisition.getEndDate()}")
+    print(f"Tecnica: {acquisition.getTechnique()}")
+    print(f"Riferisce a: {acquisition.refersTo().getTitle()}")
+
+    # Creazione di un'istanza di Processing (esempio di sottoclasse senza parametri specifici)
+    processing = Processing("Council", "Alice Liddell", {"3DF Zephyr"}, "2023-03-28", "2023-03-29", refers_to=painting)
+
+    # Accesso agli attributi dell'oggetto Processing
+    print("\nDettagli dell'attività di processing:")
+    print(f"Istituto responsabile: {processing.getResponsibleInstitute()}")
+    print(f"Persona responsabile: {processing.getResponsiblePerson()}")
+    print(f"Strumenti: {processing.getTools()}")
+    print(f"Data di inizio: {processing.getStartDate()}")
+    print(f"Data di fine: {processing.getEndDate()}")
+    print(f"Riferisce a: {processing.refersTo().getTitle()}")
+
+-------------- FINE TEST------------------------------------------
 
 
 class Handler(object):  # Chiara
@@ -511,9 +513,7 @@ class ProcessDataUploadHandler(UploadHandler):  #Cata
 process_upload = ProcessDataUploadHandler()
 process_upload.createTablesActivity('process.json', 'meta.csv')
 
-#-------------
-# java -server -Xmx1g -jar blazegraph.jar (terminal command to run Blazegraph)
-#Bea
+
 
 class QueryHandler(Handler):
     def __init__(self, dbPathOrUrl:str = ""):
@@ -560,13 +560,9 @@ class QueryHandler(Handler):
         return combined_results
 
 
-u=ProcessDataUploadHandler()
-path = "/Users/elenabinotti/download/process2.json"
-u.setDbPathOrUrl("activities.db")
-u.pushDataToDbActivities(path)
-q = ProcessDataQueryHandler()
-q.setDbPathOrUrl("activities.db")
-print(q.getActivitiesByResponsibleInstitution("Council")) # between the quotation marks put an object or an author Id
+
+# java -server -Xmx1g -jar blazegraph.jar (terminal command to run Blazegraph)
+#Bea
 
 class MetadataQueryHandler(QueryHandler):
     def __init__(self, grp_dbUrl: str):
@@ -1589,19 +1585,53 @@ for activity in activities_by_technique:
 
  
 
-class AdvancedMashup(BasicMashup):
+class AdvancedMashup:
     def __init__(self):
-        super().__init__()
+        self.activities = []  # Lista delle attività
 
-    def getObjectsHandledByResponsibleInstitution(self, institution_name, search_string): #da rivedere la parte Json Activity
-        matched_objects = []
-        
+    def getObjectsHandledByResponsibleInstitution(self, partialName: str) -> list:
+        matched_objects = set()
+
+        # Itera su tutte le attività
         for activity in self.activities:
-            if activity.getActivitiesByResponsibleInstitution().lower() == institution_name.lower():
-                for cultural_heritage_object in activity.cultural_heritage_objects:
-                    if search_string.lower() in cultural_heritage_object.getTitle().lower():
-                        if isinstance(cultural_heritage_object, CulturalHeritageObject):
-                            matched_objects.append(cultural_heritage_object)
-        
-        return matched_objects        
+            # Controlla se l'attività è gestita dall'istituzione responsabile specificata (anche parzialmente)
+            if partialName.lower() in activity.getResponsibleInstitute().lower():
+                # Recupera l'oggetto culturale a cui si riferisce l'attività
+                cultural_object = activity.refersTo()
+                # Aggiungi l'oggetto culturale all'insieme (l'insieme gestisce automaticamente l'unicità basata sull'ID)
+                matched_objects.add(cultural_object)
 
+        return list(matched_objects)
+
+
+------------------TEST-----------------------------
+
+if __name__ == "__main__":
+    # Creazione di un'istanza di AdvancedMashup
+    mashup = AdvancedMashup()
+
+    # Creazione degli oggetti culturali con i dati forniti
+    portrait_of_ulisse_aldrovandi = Painting("13", "Portrait of Ulisse Aldrovandi", "Accademia Carrara", "Bergamo", ["Carracci, Agostino (ULAN:500115349)"], "1582-1585")
+    map_of_botanical_garden_bologna = Map("16", "Map of the botanical garden in Bologna", "Orto Botanico ed Herbarium di Bologna", "Bologna", ["Monti, Giuseppe (VIAF:54929912)"], "1753")
+    
+    # Creazione delle attività associate alle istituzioni responsabili
+    activity1 = Activity("Council", "Alice Liddell", {"Nikon D7200 Nikor 50mm"}, "2023-03-24", "2023-03-24", portrait_of_ulisse_aldrovandi)
+    activity2 = Activity("Council", "Alice Liddell", {"3DF Zephyr"}, "2023-03-28", "2023-03-29", portrait_of_ulisse_aldrovandi)
+
+    # Aggiunta delle attività all'istanza di AdvancedMashup
+    mashup.activities.append(activity1)
+    mashup.activities.append(activity2)
+    
+    # Utilizzo del metodo getObjectsHandledByResponsibleInstitution
+    institution_name = "Council"  # Istituzione responsabile da cercare
+    matched_objects = mashup.getObjectsHandledByResponsibleInstitution(institution_name)
+    
+    # Stampa dei risultati
+    print(f"Oggetti culturali gestiti dall'istituzione che contiene '{institution_name}':")
+    for obj in matched_objects:
+        if isinstance(obj, Painting):
+            print(f"- {obj.getTitle()} (Tipo: Painting, Proprietario: {obj.getOwner()}, Luogo: {obj.getPlace()}, Autori: {', '.join(obj.getAuthors())}, Data: {obj.getDate()})")
+        elif isinstance(obj, Map):
+            print(f"- {obj.getTitle()} (Tipo: Map, Proprietario: {obj.getOwner()}, Luogo: {obj.getPlace()}, Autori: {', '.join(obj.getAuthors())}, Data: {obj.getDate()})")
+        else:
+            print(f"- {obj.getTitle()} (Tipo: {type(obj).__name__})")
