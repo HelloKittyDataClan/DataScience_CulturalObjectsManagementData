@@ -1589,7 +1589,7 @@ for activity in activities_by_technique:
 
  
 
- class AdvancedMashup(BasicMashup):
+class AdvancedMashup(BasicMashup):
     def __init__(self):
         super().__init__()
 

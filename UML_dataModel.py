@@ -4,7 +4,7 @@ import json
 #UTF-8
 
 #Specify the path to your JSON file
-json_path = "1_CLASSES/process.json"
+json_path = "data/process.json"
 
 #Open and read the JSON file
 with open(json_path, 'r') as file:
