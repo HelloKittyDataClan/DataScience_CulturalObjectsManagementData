@@ -97,7 +97,7 @@ class Map(CulturalHeritageObject):
 
 #____________________ JSON______________________
 
-lass Activity(object):                               
+class Activity(object):                               
     def __init__(self, institute: str, person: str, tool: str|set[str]|None, start: str, end: str, refers_to:CulturalHeritageObject):
         self.institute = institute
         self.person = person
@@ -191,7 +191,7 @@ if __name__ == "__main__":
     print(f"Data di fine: {processing.getEndDate()}")
     print(f"Riferisce a: {processing.refersTo().getTitle()}")
 
--------------- FINE TEST------------------------------------------
+#-------------- FINE TEST------------------------------------------
 
 
 class Handler(object):  # Chiara
@@ -1614,7 +1614,7 @@ class AdvancedMashup:
         return list(matched_objects)
 
 
-------------------TEST-----------------------------
+#------------------TEST-----------------------------
 
 if __name__ == "__main__":
     # Creazione di un'istanza di AdvancedMashup
