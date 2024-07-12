@@ -910,8 +910,8 @@ class ProcessDataQueryHandler(QueryHandler):
             print("An error occurred:", e)
             return None
 
-process_query = ProcessDataQueryHandler()
-process_query.setDbPathOrUrl("activities.db")
+'''process_query = ProcessDataQueryHandler()
+process_query.setDbPathOrUrl("activities.db")'''
 
 #BasicMashup
 
@@ -1174,67 +1174,15 @@ class BasicMashup(object):
 
         return result
 
-    def getActivitiesByResponsibleInstitution(self, partialName: str) -> List[Any]:
-        result = []
-        handler_list = self.processQuery
-        df_list = []
+    def getActivitiesByResponsibleInstitution(self, partialName: str) -> List[Activity]:
+        matched_activities = []
 
-        for handler in handler_list:
-            df_list.append(handler.getActivitiesByResponsibleInstitution(partialName))
+        for activity in self.activities:
+            if partialName.lower() in activity.getResponsibleInstitute().lower():
+                if isinstance(activity, Activity):
+                    matched_activities.append(activity)
 
-        df_union = pd.concat(df_list, ignore_index=True).drop_duplicates().fillna("")
-
-        for _, row in df_union.iterrows():
-            activity_type, id = row["internalId"].split("-")
-            obj_refers_to = self.getEntityById(row["objectId"])
-
-            if activity_type == "acquisition":
-                object = Acquisition(institute=row['responsible institute'],
-                person=row['responsible person'],
-                tool=row['tool'],
-                start=row['start date'],
-                end=row['end date'],
-                technique=row['technique'],
-                refers_to=obj_refers_to )
-                result.append(object)
-
-            elif activity_type == "processing":
-                object = Processing(institute=row['responsible institute'],
-                person=row['responsible person'],
-                tool=row['tool'],
-                start=row['start date'],
-                end=row['end date'],
-                refers_to=obj_refers_to )
-                result.append(object)
-
-            elif activity_type == "modelling":
-                object = Modelling(institute=row['responsible institute'],
-                person=row['responsible person'],
-                tool=row['tool'],
-                start=row['start date'],
-                end=row['end date'],
-                refers_to=obj_refers_to )
-                result.append(object)
-
-            elif activity_type == "optimising":
-                object = Optimising(institute=row['responsible institute'],
-                person=row['responsible person'],
-                tool=row['tool'],
-                start=row['start date'],
-                end=row['end date'],
-                refers_to=obj_refers_to )
-                result.append(object)
-
-            elif activity_type == "exporting":
-                object = Exporting(institute=row['responsible institute'],
-                person=row['responsible person'],
-                tool=row['tool'],
-                start=row['start date'],
-                end=row['end date'],
-                refers_to=obj_refers_to )
-                result.append(object)
-
-        return result
+        return matched_activities
 
     def getActivitiesByResponsiblePerson(self, partialName: str) -> List[Any]:
         result = []
