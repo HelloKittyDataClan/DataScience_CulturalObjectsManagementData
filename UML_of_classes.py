@@ -575,9 +575,9 @@ class QueryHandler(Handler):
 #Bea
 
 class MetadataQueryHandler(QueryHandler):
-    def __init__(self, grp_dbUrl: str):
-        super().__init__(dbPathOrUrl = grp_dbUrl)
-    
+    def __init__(self):
+        super().__init__()   
+     
     def getAllPeople(self):
         query = """
         PREFIX FOAF: <http://xmlns.com/foaf/0.1/>
