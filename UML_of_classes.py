@@ -5,12 +5,11 @@ from SPARQLWrapper import SPARQLWrapper, JSON
 import pandas as pd
 import csv
 import json
-from processQueryData import ProcessDataQueryHandler
-from UML_dataModel import Acquisition, Processing, Modelling, Optimising, Exporting
 from sparql_dataframe import get
 from typing import Optional, List, Any, Dict
 from pandas import Series
 from sqlite3 import connect
+from pprint import pp
 from os import sep
 process = "data" + sep + "process.json"
  
@@ -159,7 +158,7 @@ class Exporting(Activity):
     pass
  
 #TEST
-if __name__ == "__main__":
+'''if __name__ == "__main__":
     # Creazione di un'istanza di Person per gli autori
     author1 = Person("1", "Carracci, Agostino (ULAN:500115349)")
 
@@ -189,7 +188,7 @@ if __name__ == "__main__":
     print(f"Strumenti: {processing.getTools()}")
     print(f"Data di inizio: {processing.getStartDate()}")
     print(f"Data di fine: {processing.getEndDate()}")
-    print(f"Riferisce a: {processing.refersTo().getTitle()}")
+    print(f"Riferisce a: {processing.refersTo().getTitle()}")'''
 
 #-------------- FINE TEST------------------------------------------
 
@@ -209,7 +208,7 @@ class UploadHandler(Handler):
     def __init__(self):
         super().__init__()
 
-    def pushDataToDb(self):
+    def pushDataToDb(self, path):
         pass
 
 class MetadataUploadHandler(UploadHandler):  # Chiara
@@ -349,7 +348,7 @@ class MetadataUploadHandler(UploadHandler):  # Chiara
                 # Aggiungi l'assegnazione degli autori al grafo
                 for object_id, authors in object_mapping.items():
                     for author_uri in authors:
-                        my_graph.add((URIRef(base_url +"culturalheritageobject-" + object_id), relAuthor, author_uri))  # MODIFICA!!! mancava culturalheritageobject come parte del predicato
+                        my_graph.add((URIRef(base_url +"culturalobject-" + object_id), relAuthor, author_uri))  # MODIFICA!!! mancava culturalheritageobject come parte del predicato
 
             # Store RDF data in SPARQL endpoint
             store = SPARQLUpdateStore()
@@ -520,8 +519,8 @@ class ProcessDataUploadHandler(UploadHandler):  #Cata
             exporting_final_db.to_sql("Exporting", con, if_exists="replace", index=False)
 
 #How to implement the code (example):
-process_upload = ProcessDataUploadHandler()
-process_upload.createTablesActivity('process.json', 'meta.csv')
+'''process_upload = ProcessDataUploadHandler()
+process_upload.createTablesActivity('process.json', 'meta.csv')'''
 
 
 
@@ -576,8 +575,8 @@ class QueryHandler(Handler):
 
 class MetadataQueryHandler(QueryHandler):
     def __init__(self):
-        super().__init__()   
-     
+        super().__init__()
+    
     def getAllPeople(self):
         query = """
         PREFIX FOAF: <http://xmlns.com/foaf/0.1/>
@@ -1538,7 +1537,7 @@ class BasicMashup(object):
 
 
 # Example of implementation
-mashup = BasicMashup()
+'''mashup = BasicMashup()
 process_query = ProcessDataQueryHandler()
 process_query.setDbPathOrUrl("activities.db")
 
@@ -1591,21 +1590,45 @@ partial_name_technique = "Structured-light 3D scanner"
 activities_by_technique = mashup.getAcquisitionsByTechnique(partial_name_technique)
 print(f"Activities by technique '{partial_name_technique}':")
 for activity in activities_by_technique:
-    print(activity)
+    print(activity)'''
 
  
 
-class AdvancedMashup:
+class AdvancedMashup(BasicMashup):
     def __init__(self):
-        self.activities = []  # Lista delle attività
+        super().__init__()
 
-    def getObjectsHandledByResponsibleInstitution(self, partialName: str) -> List[CulturalHeritageObject]:
+    
+    #chiara --  restituire una lista di oggetti di tipo CulturalHeritageObject che sono stati gestiti da una responsabile persona
+    def getObjectsHandledByResponsiblePerson(self, partName: str) -> list[CulturalHeritageObject]:
+        obj_id = set()   #per memorizzare gli ID degli oggetti rilevanti dalle attività gestite dalla persona responsabile.
+    
+        for activity in self.getActivitiesByResponsiblePerson(partName):  #iteriamo sulle attività gestite dal metodo getActivitiesByResponsiblePerson
+            obj_id.add(activity.refersTo().id)   # Per ogni attività, activity.refersTo() restituisce l'oggetto a cui l'attività fa riferimento. 
+                                                    #.id viene utilizzato per ottenere l'ID dell'oggetto e questo ID viene aggiunto all'insieme obj_id.
+    
+        cultural_objects = self.getAllCulturalHeritageObjects() # itero direttamente sugli oggetti culturali filtrando gli oggetti in base agli ID memorizzati nell'insieme obj_id.
+        obj_list = []
+
+
+        for obj in cultural_objects:    # Per ogni oggetto, verifica se l'ID dell'oggetto è presente nell'insieme obj_id. Se è presente, aggiungi l'oggetto alla lista
+            if obj.id in obj_id:
+                obj_list.append(obj)
+
+        return obj_list   #che contiene tutti gli oggetti culturali gestiti dalla persona responsabile
+
+       
+
+
+
+    def getObjectsHandledByResponsibleInstitution(self, partialName: str) -> List[CulturalHeritageObject]:  #BEA
         matched_objects = []
+        self.activities = []  # Lista delle attività
 
         # Itera su tutte le attività
         for activity in self.activities:
             # Controlla se l'attività è gestita dall'istituzione responsabile specificata (anche parzialmente)
-            if partialName.lower() in activity.getResponsibleInstitute().lower():
+            if partialName.lower() in activity.getResponsibleInstitute().lower():  
                 # Recupera l'oggetto culturale a cui si riferisce l'attività
                 cultural_heritage_object = activity.refersTo()
                 # Verifica il tipo dell'oggetto culturale e aggiungilo alla lista se è appropriato
@@ -1615,37 +1638,44 @@ class AdvancedMashup:
         return matched_objects
 
     
-    
+
 
 
 #------------------TEST-----------------------------
 
-if __name__ == "__main__":
-    # Creazione di un'istanza di AdvancedMashup
-    mashup = AdvancedMashup()
 
-    # Creazione degli oggetti culturali con i dati forniti
-    portrait_of_ulisse_aldrovandi = Painting("13", "Portrait of Ulisse Aldrovandi", "Accademia Carrara", "Bergamo", ["Carracci, Agostino (ULAN:500115349)"], "1582-1585")
-    map_of_botanical_garden_bologna = Map("16", "Map of the botanical garden in Bologna", "Orto Botanico ed Herbarium di Bologna", "Bologna", ["Monti, Giuseppe (VIAF:54929912)"], "1753")
-    
-    # Creazione delle attività associate alle istituzioni responsabili
-    activity1 = Activity("Council", "Alice Liddell", {"Nikon D7200 Nikor 50mm"}, "2023-03-24", "2023-03-24", portrait_of_ulisse_aldrovandi)
-    activity2 = Activity("Council", "Alice Liddell", {"3DF Zephyr"}, "2023-03-28", "2023-03-29", portrait_of_ulisse_aldrovandi)
 
-    # Aggiunta delle attività all'istanza di AdvancedMashup
-    mashup.activities.append(activity1)
-    mashup.activities.append(activity2)
-    
-    # Utilizzo del metodo getObjectsHandledByResponsibleInstitution
-    institution_name = "Council"  # Istituzione responsabile da cercare
-    matched_objects = mashup.getObjectsHandledByResponsibleInstitution(institution_name)
-    
-    # Stampa dei risultati
-    print(f"Oggetti culturali gestiti dall'istituzione che contiene '{institution_name}':")
-    for obj in matched_objects:
-        if isinstance(obj, Painting):
-            print(f"- {obj.getTitle()} (Tipo: Painting, Proprietario: {obj.getOwner()}, Luogo: {obj.getPlace()}, Autori: {', '.join(obj.getAuthors())}, Data: {obj.getDate()})")
-        elif isinstance(obj, Map):
-            print(f"- {obj.getTitle()} (Tipo: Map, Proprietario: {obj.getOwner()}, Luogo: {obj.getPlace()}, Autori: {', '.join(obj.getAuthors())}, Data: {obj.getDate()})")
-        else:
-            print(f"- {obj.getTitle()} (Tipo: {type(obj).__name__})")
+
+rel_path = "relational.db"
+process = ProcessDataUploadHandler()
+process.setDbPathOrUrl(rel_path)
+process.pushDataToDb("data/process.json")
+
+#metterli
+pippo = MetadataUploadHandler()
+output = pippo.setDbPathOrUrl("http://10.201.5.27:9999/blazegraph/")
+#prendere
+output = pippo.pushDataToDb("data/meta.csv")
+print(output)
+
+process_qh = ProcessDataQueryHandler()
+process_qh.setDbPathOrUrl(rel_path)
+
+#cercare
+topolino = MetadataQueryHandler()
+output = topolino.setDbPathOrUrl("http://10.201.5.27:9999/blazegraph/")
+
+masha = BasicMashup()
+masha.metadataQuery = [topolino]
+#pp(masha.getAuthorsOfCulturalHeritageObject(id=4))
+
+#for bb in masha.getAuthorsOfCulturalHeritageObject(id=18):
+#    print(bb.name, bb.id)
+
+
+mashup = AdvancedMashup()
+mashup.addProcessHandler(process_qh)
+mashup.addMetadataHandler(pippo)
+
+result = mashup.getObjectsHandledByResponsiblePerson("Grace Hopper")
+pp(result)
