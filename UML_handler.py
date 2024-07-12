@@ -395,8 +395,8 @@ class QueryHandler(Handler):
 
 class MetadataQueryHandler(QueryHandler):
     def __init__(self):
-        super().__init__()
-    
+        self.dbPathOrUrl = "";
+        
     def getAllPeople(self):
         query = """
         PREFIX FOAF: <http://xmlns.com/foaf/0.1/>
