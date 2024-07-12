@@ -1637,8 +1637,37 @@ class AdvancedMashup(BasicMashup):
 
         return matched_objects
 
+
+    def getActivitiesOnObjectsAuthoredBy(self, personId:str):   #cata     #ID of the person whose authored objects we are interested in       
+        cultural_objects = self.getCulturalHeritageObjectsAuthoredBy(personId)  #calls a method that retrieves all cultural heritage objects authored by the person with the given id
+        ids = []
+        #Iteration over each object in cultural_objects
+        for object in cultural_objects:
+            ids.append(object.id)   #This creates a list of ids from the retrieved cultural heritage objects
+        activities = self.getAllActivities() #retrieves all activities
+        activities_list = []
+        for activity in activities:
+            if (activity.refersTo()).id in ids:
+                activities_list.append(activity)  #activities, keeping only those that refer to an object whose id
+
+        return activities_list  #list of activities
+
+    def getAuthorsOfObjectsAcquiredInTimeFrame(self, start:str, end:str):   #elena                  
+        acquisition_start = [(i.refersTo()).id for i in self.getActivitiesStartedAfter(start) if type(i) is Acquisition]
+        acquisition_end = [(i.refersTo()).id for i in self.getActivitiesEndedBefore(end) if type(i) is Acquisition]
+        acquisition_list = [obj for obj in acquisition_start if obj in acquisition_end]
+        authors_of_obj = set()
+        for i in acquisition_list:
+            authors = self.getAuthorsOfCulturalHeritageObject(str(i))
+            for auth in authors:
+                if auth is not None:
+                    authors_of_obj.add((auth.id,auth.name))
+        authors = [Person(id = auth[0],name=auth[1]) for auth in authors_of_obj]
+        return authors
     
 
+    
+  
 
 
 #------------------TEST-----------------------------
