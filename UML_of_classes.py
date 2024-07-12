@@ -11,7 +11,6 @@ from pandas import Series
 from sqlite3 import connect
 from pprint import pp
 from os import sep
-process = "data" + sep + "process.json"
  
 
 class IdentifiableEntity(object): #identifichiamo l'ID
@@ -100,7 +99,11 @@ class Activity(object):
     def __init__(self, institute: str, person: str, tool: str|set[str]|None, start: str, end: str, refers_to:CulturalHeritageObject):
         self.institute = institute
         self.person = person
-        self.tool = tool         
+        self.tool = set()
+        if isinstance(tool, str):
+            self.tool = set(tool.split(", "))
+        elif isinstance(tool, set):
+            self.tool = tool         
         self.start = start
         self.end = end
         self.refers_to = refers_to
@@ -115,7 +118,7 @@ class Activity(object):
             return self.person
  
     def getTools(self):
-        return self.tool
+        return {str(Tool) for Tool in self.tool}
     
     def getStartDate(self):
         if self.start == "":
@@ -518,9 +521,10 @@ class ProcessDataUploadHandler(UploadHandler):  #Cata
             optimising_final_db.to_sql("Optimising", con, if_exists="replace", index=False)
             exporting_final_db.to_sql("Exporting", con, if_exists="replace", index=False)
 
+
 #How to implement the code (example):
 '''process_upload = ProcessDataUploadHandler()
-process_upload.createTablesActivity('process.json', 'meta.csv')'''
+process_upload.createTablesActivity('data/process.json', 'data/meta.csv')'''
 
 
 
@@ -906,6 +910,8 @@ class ProcessDataQueryHandler(QueryHandler):
             print("An error occurred:", e)
             return None
 
+process_query = ProcessDataQueryHandler()
+process_query.setDbPathOrUrl("activities.db")
 
 #BasicMashup
 
@@ -1354,21 +1360,22 @@ class BasicMashup(object):
 
         return result
 
-    def getActivitiesStartedAfter(self, date: str) -> List[Any]:
-        result = []
-        handler_list = self.processQuery
-        df_list = []
+    def getActivitiesStartedAfter(self, date: str) -> List[Any]:   #cata
+        #should retrieves all activities that started after a specified date
+        result = [] #empty list to store the filtered activities
+        handler_list = self.processQuery #Get the list of process query handlers
+        df_list = [] #to append the retrieved activities
 
-        for handler in handler_list:
+        for handler in handler_list: #loop for each handler
             df_list.append(handler.getAllActivities())
 
-        df_union = pd.concat(df_list, ignore_index=True).drop_duplicates().fillna("")
+        df_union = pd.concat(df_list, ignore_index=True).drop_duplicates().fillna("") #concatenate all df in df_list into a single df_union. remove duplicates and fill any missing values with an empty str
 
         df_filtered = df_union[df_union["start date"] > date]
 
         for _, row in df_filtered.iterrows():
-            activity_type, id = row["internalId"].split("-")
-            obj_refers_to = self.getEntityById(row["objectId"])
+            activity_type, id = row["internalId"].split("-")  #create an instance of the corresponding activity
+            obj_refers_to = self.getEntityById(row["objectId"]) #get the cultural heritage object referred to by the activity using its objectId
 
             if activity_type == "acquisition":
                 object = Acquisition(institute=row['responsible institute'],
@@ -1533,6 +1540,7 @@ class BasicMashup(object):
         return result
 
 
+
 #____________________TESTS_____________________
 
 
@@ -1592,12 +1600,11 @@ print(f"Activities by technique '{partial_name_technique}':")
 for activity in activities_by_technique:
     print(activity)'''
 
- 
 
-class AdvancedMashup(BasicMashup):
+
+class AdvancedMashup(BasicMashup): # chiara
     def __init__(self):
         super().__init__()
-
     
     #chiara --  restituire una lista di oggetti di tipo CulturalHeritageObject che sono stati gestiti da una responsabile persona
     def getObjectsHandledByResponsiblePerson(self, partName: str) -> list[CulturalHeritageObject]:
@@ -1651,6 +1658,8 @@ class AdvancedMashup(BasicMashup):
                 activities_list.append(activity)  #activities, keeping only those that refer to an object whose id
 
         return activities_list  #list of activities
+    
+
 
     def getAuthorsOfObjectsAcquiredInTimeFrame(self, start:str, end:str):   #elena                  
         acquisition_start = [(i.refersTo()).id for i in self.getActivitiesStartedAfter(start) if type(i) is Acquisition]
@@ -1666,13 +1675,8 @@ class AdvancedMashup(BasicMashup):
         return authors
     
 
-    
-  
-
 
 #------------------TEST-----------------------------
-
-
 
 
 rel_path = "relational.db"
