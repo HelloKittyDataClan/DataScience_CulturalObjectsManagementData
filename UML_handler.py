@@ -344,12 +344,10 @@ process_upload.createTablesActivity('data/process.json', 'data/meta.csv')'''
 
 
 
-class QueryHandler(Handler):
-    def __init__(self, dbPathOrUrl:str = ""):
-       self.dbPathOrUrl = dbPathOrUrl
-
-    def getById(self, id: str):
+def getById(self, id: str):
         person_query_str = """
+            PREFIX FOAF: <http://xmlns.come/foaf/0.1>
+            PREFIX schema: <http://schema.org/>
             SELECT DISTINCT ?uri ?name ?id 
             WHERE {
                 ?uri <http://schema.org/identifier> "%s" ;
@@ -360,6 +358,10 @@ class QueryHandler(Handler):
         """ % id
         
         object_query_str = """
+            PREFIX schema: <http://schema.org/>
+            PREFIX FOAF: <http://xmlns.com/foaf/0.1/>
+            PREFIX base_url: <http://github.com/HelloKittyDataClan/DSexam/>
+            PREFIX db: <https://dbpedia.org/property/>
             SELECT DISTINCT ?object ?id ?type ?title ?date ?owner ?place ?author ?author_name ?author_id 
             WHERE {
                 ?object <http://schema.org/identifier> "%s" .
@@ -378,16 +380,17 @@ class QueryHandler(Handler):
             }
 
         """ % id
-        results_person = self.get(self.dbPathOrUrl + "sparql", person_query_str, True)
-        results_object = self.get(self.dbPathOrUrl + "sparql", object_query_str, True)
+        results_person = get(self.dbPathOrUrl + "sparql", person_query_str, True)
+        results_object = get(self.dbPathOrUrl + "sparql", object_query_str, True)
 
-        combined_results = {
-            'person': results_person,
-            'object': results_object
-        }
+    
+        person_df = pd.DataFrame(results_person)
+        object_df = pd.DataFrame(results_object)
 
-        return combined_results
+   
+        combined_df = pd.concat([person_df, object_df], axis=1)
 
+        return combined_df
 
 
 # java -server -Xmx1g -jar blazegraph.jar (terminal command to run Blazegraph)
