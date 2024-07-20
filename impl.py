@@ -1,201 +1,140 @@
-from typing import Optional #serve per indicare che un certo valore può essere presente o assente,
-import json
-import csv
-
-#Imports fo relational db
-from pandas import Series
-import json
-from typing import Any, Dict, List
-from sqlite3 import connect
-
-#imports for graph db 
-from rdflib import Namespace 
-from rdflib.namespace import FOAF
 from rdflib import Graph, URIRef, RDF, Namespace, Literal
+from rdflib.namespace import FOAF
 from rdflib.plugins.stores.sparqlstore import SPARQLUpdateStore
-from rdflib.plugins.sparql import prepareQuery
 from SPARQLWrapper import SPARQLWrapper, JSON
-import urllib.request
-
-#imports for both
 import pandas as pd
-from pandas import DataFrame  #per la creazione del dataframe 
+import csv
+import json
 
-#JSON upload and read 
-#Specify the path to your JSON file
-json_path = "data/process.json"
-
-#Open and read the JSON file
-with open(json_path, 'r') as file:
-    json_data = file.read()
-
-#Parse the JSON data into a Python object
-data = json.loads(json_data)
-
-#Utilize the data for UML purposes
-#Print the data to inspect its structure
-
-#print(data) --> controller
+from sparql_dataframe import get
+from typing import Optional, List, Any, Dict
+from pandas import Series
+from sqlite3 import connect
+from pprint import pp
+from os import sep
+process = "data" + sep + "process.json"
+ 
 
 class IdentifiableEntity(object): #identifichiamo l'ID
     def __init__(self, id: str):
-        if not isinstance(id, str): #se l'ID non è una stringa
-            raise ValueError("ID must be a string for the IdentifiableEntity")
-        self.id = id #deve essere necessariamente una stringa cosi che l'ID sia valido sempre
+        self.id = id 
 
     def get_id(self):
         return self.id
 
+class Person(IdentifiableEntity):
+    def __init__(self, id: str, name: str):
+        self.name = name
+        super().__init__(id)
+    
+    def getName(self):
+        return self.name
+
+
 #___________________________CSV_________________________
 
-class CulturalObject(IdentifiableEntity):
-    def __init__(self, id:str, title:str, owner:str, place:str, date:str= None,authors:list=None): #vado a definire title, date, owner, place, Author  del mio csv 
-        super().__init__(id)  #cosi facendo vado a richiamare l'ID della classe IdentifiableEntity
-        if not isinstance(title, str):
-            raise ValueError("Title must be a string for the CulturalObject")
-        if not isinstance(owner, str):
-            raise ValueError("Owner must be a string for the CulturalObject")
-        if not isinstance(place, str):
-            raise ValueError("Place must be a string for the CulturalObject")
-        if date is not None and not isinstance(date, str):
-            raise ValueError("Date must be a string or None for the CulturalObject")
-        if authors is not None:
-            if not all(isinstance(author, Person) for author in authors):
-                raise ValueError("Authors must be instances of Person or None for the CulturalObject")    # garantisce che gli autori forniti per il nostro oggetto culturale siano parte della classe Person
-        
-        self.title=title
-        self.date=date
-        self.owner=owner
-        self.place=place
-        self.authors=[]    #lista vuota assegnata all'attributo authors 
+class CulturalHeritageObject(IdentifiableEntity):
+    def __init__(self, id: str, title: str, owner: str, place: str, hasAuthor: list[Person], date:str = None):
+        self.title = title
+        self.date = date
+        self.owner = owner
+        self.place = place
+        self.hasAuthor = hasAuthor 
+        super().__init__(id)
 
-        if authors:
-            if isinstance(authors, Person):
-                self.authors.append(authors)
-            elif isinstance(authors, list):
-                self.authors.extend(authors)       #si occupa di aggiungere gli autori forniti all'oggetto culturale CulturalObject, gestendo sia il caso in cui sia fornito un singolo autore come istanza di Person, sia il caso in cui siano forniti più autori come lista di istanze di Person.
-   
-    def getTitle(self):
+    def getTitle(self) ->str:
         return self.title
 
-    def getDate(self):
-        if self.date:
-           return self.date
-        return None
+     
+    def getDate(self) -> Optional[str]:
+        return self.date
+
         
-    def getOwner(self):
+    def getOwner(self) -> str:
         return self.owner
 
-    def getPlace(self):
+    def getPlace(self) -> str:
         return self.place
 
-    def getAuthors(self):
-        return self.authors
+    def getAuthors(self) -> list[Person]:
+        return self.hasAuthor
+    
 
-
-#definiamo le sottoclassi relative alla classe Cultrual Object   
-class NauticalChart(CulturalObject):
+class NauticalChart(CulturalHeritageObject):
     pass
 
-class ManuscriptPlate(CulturalObject):
+class ManuscriptPlate(CulturalHeritageObject):
     pass
 
-class ManuscriptVolume(CulturalObject):
+class ManuscriptVolume(CulturalHeritageObject):
     pass
 
-class PrintedVolume(CulturalObject):
+class PrintedVolume(CulturalHeritageObject):
     pass
 
-class PrintedMaterial(CulturalObject):
+class PrintedMaterial(CulturalHeritageObject):
     pass
 
-class Herbarium(CulturalObject):
+class Herbarium(CulturalHeritageObject):
     pass
 
-class Specimen(CulturalObject):
+class Specimen(CulturalHeritageObject):
     pass
 
-class Painting(CulturalObject):
+class Painting(CulturalHeritageObject):
     pass
 
-class Model(CulturalObject):
+class Model(CulturalHeritageObject):
     pass
 
-class Map(CulturalObject):
+class Map(CulturalHeritageObject):
     pass
 
 
 
 #____________________ JSON______________________
 
-#Creation of class Person that refers to CulturalObject
-class Person(IdentifiableEntity):
-    def __init__(self, name: str): #define parameter name
-        super().__init__(id)
-        if not isinstance(name, str):
-            raise ValueError("Name must be a string for the Person")
-        self.name = name
-    
-    def getName(self):
-        return self.name
 
-#Creation of class Activity that refers to CulturalObject
-class Activity():                               
-    def _init_(self, institute: str, person: str= None, tool: str|set[str]|None = None, start: str = None, end: str = None): 
-        super().__init__()  # Initialize (replace with appropriate values)
-        if not isinstance(institute, str):
-            raise ValueError("Institute must be a string for the Activity")
-        if person is not None and not isinstance(person, str):
-            raise ValueError("Person must be a string or None for the Activity")
-        if not isinstance(tool, str, set[str]):
-            raise ValueError("Tool must be a string or a set of strings for the Activity")
-        if start is not None and not isinstance(start, str):
-            raise ValueError("Start Date must be a string or None for the Activity")
-        if end is not None and not isinstance(start, str):
-            raise ValueError("End Date must be a string or None for the Activity")
+class Activity(object):                               
+    def __init__(self, institute: str, person: str, tool: str|set[str]|None, start: str, end: str, refersTo_cho:CulturalHeritageObject):
         self.institute = institute
         self.person = person
         self.tool = tool         
         self.start = start
         self.end = end
+        self.refersTo_cho = refersTo_cho
         
-    def getResponsibleInstitute(self):
+    def getResponsibleInstitute(self) -> str:
         return self.institute
     
-    def getResponsiblePerson(self):
+    def getResponsiblePerson(self) -> Optional[str]:
         return self.person
-
-    def getTools(self):
+    
+    def getTools(self) -> set: # getTool has arity zero or more [0..*]
         return self.tool
     
-    def getStartDate(self):
-        return self.start 
-    
-    def getEndDate(self):
+    def getStartDate(self) -> Optional[str]:
+        return self.start
+
+    def getEndDate(self) -> Optional[str]:
         return self.end
     
-    def refersTo(self, CulturalObject):     #---->>>non si riferisce a nessun oggetto e non ti ritorna nulla, TI DEVE RITORNARE CULTURAL OBJECT!!
-        if isinstance(CulturalObject):
-            self.title.append(CulturalObject)
-        else:
-            raise ValueError("Invalid object type provided")
-
+    def getRefersTo_cho(self) -> CulturalHeritageObject:
+        return self.refersTo_cho
+ 
 #Subclass of Activity just with technique parameter
-
+ 
 class Acquisition(Activity):
-    def _init_(self, technique: str):   
-        super().__init__() 
-        if not isinstance(technique, str):
-            raise ValueError("Acquisition.technique must be a string")
+    def __init__(self, institute: str, person: str,tool: str|set[str]|None, start: str, end: str, refersTo_cho: CulturalHeritageObject, technique: str):
+        super().__init__(institute, person, tool, start, end, refersTo_cho)
         self.technique = technique
-        
-    def getTechnique(self):
+    
+    def getTechnique(self) -> str:
         return self.technique
 
-#Subclasses without defined parameters
 class Processing(Activity):
     pass
-        
+
 class Modelling(Activity):
     pass
 
@@ -204,12 +143,125 @@ class Optimising(Activity):
 
 class Exporting(Activity):
     pass
+ 
+'''
+class Activity(object):                               
+    def __init__(self, institute: str, person: str, tool: str|set[str]|None, start: str, end: str, refers_to:CulturalHeritageObject):
+        self.institute = institute
+        self.person = person
+        self.tool = tool         
+        self.start = start
+        self.end = end
+        self.refers_to = refers_to
+        
+    def getResponsibleInstitute(self) -> str:
+        return self.institute
+    
+    def getResponsiblePerson(self):
+        if self.person == "":
+            return None
+        else:
+            return self.person
+ 
+    def getTools(self):
+        return self.tool
+    
+    def getStartDate(self):
+        if self.start == "":
+            return None
+        else:
+            return self.start
+    
+    def getEndDate(self):
+        if self.end == "":
+            return None
+        else:
+            return self.end
+    
+    def refersTo(self) -> CulturalHeritageObject:   #---->>>non si riferisce a nessun oggetto e non ti ritorna nulla, TI DEVE RITORNARE CULTURAL OBJECT!!
+       return self.refers_to
+ 
+#Subclass of Activity just with technique parameter
+ 
+class Acquisition(Activity):
+    def __init__(self, institute: str, person: str, tool: str|set[str]|None, start: str, end: str, technique: str, refers_to:CulturalHeritageObject):
+        self.technique = technique
+        super().__init__(institute, person, tool, start, end, refers_to) #for aquisition aggiungiamo il technique quindi la prima volta che lo definiamo è qui, dobbiamo ridichiarare perchè
+        if not isinstance(technique, str):
+            raise ValueError("Acquisition.technique must be a string")
+        
+    def getTechnique(self) -> str:
+        return self.technique
+ 
+#Subclasses without defined parameters
+class Processing(Activity):
+    pass
+        
+class Modelling(Activity):
+    pass
+ 
+class Optimising(Activity):
+    pass
+ 
+class Exporting(Activity):
+    pass
+
+#Subclasses with defined parameters
+class Processing(Activity):
+    def __init__(self, institute: str, person: str, tool: str|set[str]|None, start: str, end: str, refers_to:CulturalHeritageObject):
+        super().__init__(institute, person, tool, start, end, refers_to)
+        
+class Modelling(Activity):
+    def __init__(self, institute: str, person: str, tool: str|set[str]|None, start: str, end: str, refers_to:CulturalHeritageObject):
+        super().__init__(institute, person, tool, start, end, refers_to)
+ 
+class Optimising(Activity):
+    def __init__(self, institute: str, person: str, tool: str|set[str]|None, start: str, end: str, refers_to:CulturalHeritageObject):
+        super().__init__(institute, person, tool, start, end, refers_to)
+ 
+class Exporting(Activity):
+    def __init__(self, institute: str, person: str, tool: str|set[str]|None, start: str, end: str, refers_to:CulturalHeritageObject):
+        super().__init__(institute, person, tool, start, end, refers_to)
 
 
-#__________________________________________#
+#TEST
+if __name__ == "__main__":
+    # Creazione di un'istanza di Person per gli autori
+    author1 = Person("1", "Carracci, Agostino (ULAN:500115349)")
 
-#basic Handlers Classes 
-class Handler:  # Chiara
+    # Creazione di un oggetto di tipo Painting
+    painting = Painting("13", "Portrait of Ulisse Aldrovandi", "Accademia Carrara", "Bergamo", [author1], "1582-1585")
+
+    # Creazione di un'istanza di Acquisition
+    acquisition = Acquisition("Council", "Alice Liddell", {"Nikon D7200 Nikor 50mm"}, "2023-03-24", "2023-03-24", "Photogrammetry", refers_to=painting)
+
+    # Accesso agli attributi dell'oggetto Acquisition
+    print("Dettagli dell'acquisizione:")
+    print(f"Istituto responsabile: {acquisition.getResponsibleInstitute()}")
+    print(f"Persona responsabile: {acquisition.getResponsiblePerson()}")
+    print(f"Strumenti: {acquisition.getTools()}")
+    print(f"Data di inizio: {acquisition.getStartDate()}")
+    print(f"Data di fine: {acquisition.getEndDate()}")
+    print(f"Tecnica: {acquisition.getTechnique()}")
+    print(f"Riferisce a: {acquisition.refersTo().getTitle()}")
+
+    # Creazione di un'istanza di Processing (esempio di sottoclasse senza parametri specifici)
+    processing = Processing("Council", "Alice Liddell", {"3DF Zephyr"}, "2023-03-28", "2023-03-29", refers_to=painting)
+
+    # Accesso agli attributi dell'oggetto Processing
+    print("\nDettagli dell'attività di processing:")
+    print(f"Istituto responsabile: {processing.getResponsibleInstitute()}")
+    print(f"Persona responsabile: {processing.getResponsiblePerson()}")
+    print(f"Strumenti: {processing.getTools()}")
+    print(f"Data di inizio: {processing.getStartDate()}")
+    print(f"Data di fine: {processing.getEndDate()}")
+    print(f"Riferisce a: {processing.refersTo().getTitle()}")
+
+#-------------- FINE TEST------------------------------------------
+
+'''
+
+class Handler(object):  # Chiara
     def __init__(self):
         self.dbPathOrUrl = ""
 
@@ -224,24 +276,20 @@ class UploadHandler(Handler):
     def __init__(self):
         super().__init__()
 
-    def pushDataToDb(self):
+    
+
+    def pushDataToDb(self, path):
         pass
 
 
-class QueryHandler(Handler):
-    def __init__(self, dbPathOrUrl: str = ""):
-        super().__init__()
-        self.dbPathOrUrl = dbPathOrUrl
-
-    def getById(self, id: str) -> DataFrame:
-        pass
 
 
-#_______________CSV PART__________#
+
+
 
 class MetadataUploadHandler(UploadHandler):  # Chiara
-    def __init__(self):
-        self.dbPathOrUrl = ""
+    def __init__(self):  
+        super().__init__()
 
     def pushDataToDb(self, path) -> bool:
 
@@ -250,13 +298,13 @@ class MetadataUploadHandler(UploadHandler):  # Chiara
             venus = pd.read_csv(path,
                                 keep_default_na=False,
                                 dtype={
-                                    "Id": "string",
-                                    "Type": "string",
-                                    "Title": "string",
-                                    "Date": "string",
-                                    "Author": "string",
-                                    "Owner": "string",
-                                    "Place": "string",
+                                    "Id": str,
+                                    "Type": str,
+                                    "Title": str,
+                                    "Date": str,
+                                    "Author": str,
+                                    "Owner": str,
+                                    "Place": str,
                                 })
             # Rimuoviamo i duplicati della colonna id, mantenendo la prima istanza
             venus.drop_duplicates(subset=["Id"], keep="first", inplace=True, ignore_index=True)
@@ -376,7 +424,7 @@ class MetadataUploadHandler(UploadHandler):  # Chiara
                 # Aggiungi l'assegnazione degli autori al grafo
                 for object_id, authors in object_mapping.items():
                     for author_uri in authors:
-                        my_graph.add((URIRef(base_url +"culturalobject-" + object_id), relAuthor, author_uri))  # MODIFICA mancava cultural object come parte del predicato
+                        my_graph.add((URIRef(base_url +"culturalobject-" + object_id), relAuthor, author_uri))  # MODIFICA!!! mancava culturalheritageobject come parte del predicato
 
             # Store RDF data in SPARQL endpoint
             store = SPARQLUpdateStore()
@@ -388,86 +436,175 @@ class MetadataUploadHandler(UploadHandler):  # Chiara
 
             store.close()
 
-#Bea
-class QueryHandler(Handler):
-    def __init__(self, dbPathOrUrl: str = ""):
+            # Verificare se il grafo è stato caricato 
+            query_graph = """
+            SELECT ?s ?p ?o
+            WHERE {
+                ?s ?p ?o .
+            }
+            """
+            result_dataset = get(endpoint, query_graph, True)
+
+            num_triples_blazegraph = len(result_dataset)
+            num_triples_local = len(my_graph)
+
+            pos = num_triples_blazegraph == num_triples_local
+            if pos:
+                print("I dati sono stati caricati con successo su Blazegraph.")
+                return True
+            else:
+                print("Caricamento dei dati su Blazegraph non riuscito.")
+                return False
+
+
+#---------------------------
+
+# Define the data type for lists of dictionaries
+DataType = List[Dict[str, Any]]
+
+# qui c'era class Handler(object):  # Chiara e class UploadHandler(Handler)
+# ma non so sto datatype qi sopra dove deve andare
+
+
+#_____________________RELATIONAL DATA BASE____________________________
+
+
+class ProcessDataUploadHandler(UploadHandler):  #Cata
+    def __init__(self):
         super().__init__()
-        self.dbPathOrUrl = dbPathOrUrl
 
-    def getById(self, id: str) -> DataFrame:
-        pass
 
-class MetadataQueryHandler(QueryHandler):
-    def __init__(self, db_url):
-        super().__init__()
-        self.dbPathOrUrl = db_url
-
-    def execute_sparql_query(self, query):
-        sparql = SPARQLWrapper(self.dbPathOrUrl + "sparql")
-        sparql.setReturnFormat(JSON)
-        sparql.setQuery(query)
-        ret = sparql.queryAndConvert()
-        df_columns = ret["head"]["vars"]
+    #Create a function to create 5 different tables
+    def pushDataToDbActivities(self, file_path: str, field_name: str) -> pd.DataFrame:
+        # Load JSON data from file
+        with open(file_path, 'r') as file:
+            df_activity = json.load(file)
         
-        # Collect row data in a list
-        rows = []
-        for row in ret["results"]["bindings"]:
-            row_dict = {column: row[column]["value"] if column in row else None for column in df_columns}
-            rows.append(row_dict)
+        table_data: List[Dict[str, Any]] = []
         
-        # Create DataFrame from the list of rows
-        df = pd.DataFrame(rows, columns=df_columns)
+        for item in df_activity:
+            if field_name in item:
+                field_entry = item[field_name]
+                field_entry['object id'] = item['object id']
+                table_data.append(field_entry)
+
+        # Convert the list of dictionaries to a DataFrame
+        df_activities = pd.DataFrame(table_data)
+        
+        # Convert lists in 'tool' column to comma-separated strings because lists are not readed
+        if 'tool' in df_activities.columns:
+            df_activities['tool'] = df_activities['tool'].apply(lambda x: ', '.join(x) if isinstance(x, list) else x)
+            
+        return df_activities
+
+    #Create internalId for each one (important for queries)
+    def addInternalIds(self, df: pd.DataFrame, field_name: str) -> pd.DataFrame:
+        # Create internal IDs
+        internal_ids = [f"{field_name}-{idx}" for idx in range(len(df))]
+        # Add the internal IDs as a new column
+        df.insert(0, "internalId", Series(internal_ids, dtype="string"))
+        
         return df
+
+    #Replace object id with objectId (internal id of objects). Two cases with the row technique included (activities) or without this data
+    def extractAndRenameColumns(self, df: pd.DataFrame, include_technique: bool = False) -> pd.DataFrame:
+        columns = ["internalId", "object id", "responsible institute", "responsible person", "tool", "start date", "end date"]
+        if include_technique:
+            columns.insert(4, "technique")  # Insert 'technique' column before 'tool'
         
+        identifiers = df[columns]
+        identifiers = identifiers.rename(columns={"object id": "objectId"})
+        return identifiers
+        
+    #Create individual DataFrame tables calling the pushDataToDbActivities, internal ID, etc.
+    def pushDataToDb(self, activities_file_path: str):
+        #Create individual DataFrames
+        acquisition_df = self.pushDataToDbActivities(activities_file_path, 'acquisition')
+        processing_df = self.pushDataToDbActivities(activities_file_path, 'processing')
+        modelling_df = self.pushDataToDbActivities(activities_file_path, 'modelling')
+        optimising_df = self.pushDataToDbActivities(activities_file_path, 'optimising')
+        exporting_df = self.pushDataToDbActivities(activities_file_path, 'exporting')
+
+        #Add internal IDs to each DataFrame
+        acquisition_df = self.addInternalIds(acquisition_df, 'acquisition')
+        processing_df = self.addInternalIds(processing_df, 'processing')
+        modelling_df = self.addInternalIds(modelling_df, 'modelling')
+        optimising_df = self.addInternalIds(optimising_df, 'optimising')
+        exporting_df = self.addInternalIds(exporting_df, 'exporting')
+        
+        #Extract and rename columns, including 'technique' for acquisition
+        acquisition_final_db = self.extractAndRenameColumns(acquisition_df, include_technique=True)
+        processing_final_db = self.extractAndRenameColumns(processing_df)
+        modelling_final_db = self.extractAndRenameColumns(modelling_df)
+        optimising_final_db = self.extractAndRenameColumns(optimising_df)
+        exporting_final_db = self.extractAndRenameColumns(exporting_df)
+        
+        #Save to SQLite database in the file
+        with connect("relational.db") as con:
+            acquisition_final_db.to_sql("Acquisition", con, if_exists="replace", index=False)
+            processing_final_db.to_sql("Processing", con, if_exists="replace", index=False)
+            modelling_final_db.to_sql("Modelling", con, if_exists="replace", index=False)
+            optimising_final_db.to_sql("Optimising", con, if_exists="replace", index=False)
+            exporting_final_db.to_sql("Exporting", con, if_exists="replace", index=False)
+        
+        return True
+
+
+
+class QueryHandler(Handler):
+    def __init__(self,):  
+        super().__init__()
     
 
+    def getById(self, id: str) -> pd.DataFrame:
+        id = str(id)
+        grp_endpoint = "http://192.168.178.167:9999/blazegraph/sparql"
 
-    def getById(self, id):
-        person_query_str = """
-            SELECT DISTINCT ?uri ?name ?id 
-            WHERE {
-                ?uri <http://schema.org/identifier> "%s" ;    #ostituire con ULAN o VIAF 
-                     <http://xmlns.com/foaf/0.1/name> ?name ;
-                     <http://schema.org/identifier> ?id .
-                ?object <http://schema.org/author> ?uri .
-            }
-        """ % id
-        
-        object_query_str = """
+    
+        if id.isdigit():
+            query = """
+            PREFIX FOAF: <http://xmlns.com/foaf/0.1>
+            PREFIX schema: <http://schema.org/>
             SELECT DISTINCT ?object ?id ?type ?title ?date ?owner ?place ?author ?author_name ?author_id 
             WHERE {
-                ?object <http://schema.org/identifier> "%" . #sostutuire con id autore numero da 1 a 35
-                ?object <http://schema.org/identifier> ?id  .
+                ?object <http://schema.org/identifier> "%s" .
+                ?object <http://schema.org/identifier> ?id .
                 ?object <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> ?type .
                 ?object <http://schema.org/title> ?title .
                 ?object <http://github.com/HelloKittyDataClan/DSexam/owner> ?owner .
                 ?object <http://schema.org/itemLocation> ?place .
-                 
-                OPTIONAL {
-                    ?object <http://schema.org/dateCreated> ?date .
-                    ?object <http://schema.org/author> ?author .
-                    ?author <http://xmlns.com/foaf/0.1/name> ?author_name .
-                    ?author <http://schema.org/identifier> ?author_id .
-                }
+             
+                OPTIONAL {?object <http://schema.org/dateCreated> ?date .}
+                OPTIONAL {?object <http://schema.org/author> ?author .}
+                OPTIONAL {?author <http://xmlns.com/foaf/0.1/name> ?author_name .}
+                OPTIONAL {?author <http://schema.org/identifier> ?author_id .}
+                
             }
-
-        """ % id
-
-        # Prepare SPARQL queries
-        person_query = prepareQuery(person_query_str, initNs={"schema": URIRef("http://schema.org/"), "foaf": URIRef("http://xmlns.com/foaf/0.1/")})
-        object_query = prepareQuery(object_query_str, initNs={"schema": URIRef("http://schema.org/"), "base_url": URIRef("http://github.com/HelloKittyDataClan/DSexam/")})
-        
-        # Execute SPARQL queries
-        person_df = self.execute_sparql_query(person_query)
-        # Execute SPARQL queries
-        person_df = self.execute_sparql_query(person_query)
-        object_df = self.execute_sparql_query(object_query)
-
-        # Check if objects exist and return accordingly
-        if len(object_df) > 0:
-            return object_df
+            """ % id
         else:
-            return person_df
+            query = """
+            PREFIX FOAF: <http://xmlns.com/foaf/0.1/>
+            PREFIX schema: <http://schema.org/>
+            SELECT DISTINCT ?uri ?name ?id 
+            WHERE {
+                ?uri <http://schema.org/identifier> "%s" ;
+                     <http://xmlns.com/foaf/0.1/name> ?name ;
+                     <http://schema.org/identifier> ?id .
+                ?object <http://schema.org/author> ?uri .
+            }
+            """ % id
+    
+        results = get(grp_endpoint, query, True)
+        return results
+
+
+# cd ~/Downloads
+# java -server -Xmx1g -jar blazegraph.jar (terminal command to run Blazegraph)
+#Bea
+
+class MetadataQueryHandler(QueryHandler):
+    def __init__(self):
+        super().__init__()
     
     def getAllPeople(self):
         query = """
@@ -481,21 +618,11 @@ class MetadataQueryHandler(QueryHandler):
                  FOAF:name ?author_name .
         }
         """
-        results = self.execute_sparql_query(query)
-        rows = []
-        for result in results["results"]["bindings"]:
-            row = {
-                "uri": result["uri"]["value"],
-                "author_name": result["author_name"]["value"],
-                "author_id": result["author_id"]["value"]
-            }
-            rows.append(row)
+        results = get(self.dbPathOrUrl + "sparql",query, True)
+        return results
+
     
-        df = pd.DataFrame(rows)
-        return df
-    
-    
-    def getAllCulturalHeritageObjects(self) -> pd.DataFrame:
+    def getAllCulturalHeritageObjects(self):
         query = """
         PREFIX schema: <http://schema.org/>
         PREFIX base_url: <http://github.com/HelloKittyDataClan/DSexam/>
@@ -530,28 +657,11 @@ class MetadataQueryHandler(QueryHandler):
             ))
         }
         """
+        results = get(self.dbPathOrUrl + "sparql", query, True)
+        return results       
     
-        results = self.execute_sparql_query(query)
-    
-        objects = []
-        for result in results["results"]["bindings"]:
-            obj = {}
-            obj["object"] = result["object"]["value"] if "object" in result else None
-            obj["id"] = result["id"]["value"] if "id" in result else None
-            obj["type"] = result["type"]["value"] if "type" in result else None
-            obj["title"] = result["title"]["value"] if "title" in result else None
-            obj["date"] = result["date"]["value"] if "date" in result else None
-            obj["owner"] = result["owner"]["value"] if "owner" in result else None
-            obj["place"] = result["place"]["value"] if "place" in result else None
-            obj["authorName"] = result["authorName"]["value"] if "authorName" in result else None
-            obj["authorID"] = result["authorID"]["value"] if "authorID" in result else None
-            objects.append(obj)
 
-        return pd.DataFrame(objects)
-
-
-
-    def getAuthorsOfCulturalHeritageObject(self, object_id: str) -> pd.DataFrame:
+    def getAuthorsOfCulturalHeritageObject(self, object_id: str) -> pd.DataFrame:        #modifica per ottenere un object id con la query giusta
         query = f"""
         PREFIX schema: <http://schema.org/>
         PREFIX foaf: <http://xmlns.com/foaf/0.1/>
@@ -559,35 +669,15 @@ class MetadataQueryHandler(QueryHandler):
         SELECT DISTINCT ?authorName ?authorID 
         WHERE {{
           ?object schema:identifier "{object_id}" ;
-                  schema:author ?entity .
+                  schema:author ?uri .
 
-          ?author schema:author ?entity ;
-                  foaf:name ?authorName ;
-                  schema:identifier ?authorID .
-        }}
+          ?uri schema:identifier ?authorID ;
+               foaf:name ?authorName .
+        }} 
         """
+        results = get(self.dbPathOrUrl + "sparql",query, True)
+        return results
 
-        
-        sparql = SPARQLWrapper(self.dbPathOrUrl + "sparql")
-        sparql.setQuery(query)
-        sparql.setReturnFormat(JSON)
-        results = sparql.query().convert()
-
-        
-        columns = ['authorName', 'authorID', 'author']
-        data = []
-        for result in results['results']['bindings']:
-            author_name = result.get('authorName', {}).get('value', None)
-            author_id = result.get('authorID', {}).get('value', None)
-            author_uri = result.get('author', {}).get('value', None)
-            data.append([author_name, author_id, author_uri])
-
-        df = pd.DataFrame(data, columns=columns)
-
-       
-        df.drop_duplicates(subset=['authorName', 'authorID'], keep='first', inplace=True)
-
-        return df
     
     def getCulturalHeritageObjectsAuthoredBy(self, personid: str) -> pd.DataFrame:
         query = f"""
@@ -625,185 +715,11 @@ class MetadataQueryHandler(QueryHandler):
             ))
         }}
         """
-
-       
-        sparql = SPARQLWrapper(self.dbPathOrUrl + "sparql")
-        sparql.setQuery(query)
-        sparql.setReturnFormat(JSON)
-        
-        try:
-            results = sparql.query().convert()
-        except Exception as e:
-            print(f"Errore nella query SPARQL: {e}")
-            return pd.DataFrame()  # Ritorna un DataFrame vuoto in caso di errore
-
-        
-        objects = []
-        for result in results.get("results", {}).get("bindings", []):
-            obj = {
-                "object": result.get("object", {}).get("value", None),
-                "id": result.get("id", {}).get("value", None),
-                "type": result.get("type", {}).get("value", None),
-                "title": result.get("title", {}).get("value", None),
-                "date": result.get("date", {}).get("value", None),
-                "owner": result.get("owner", {}).get("value", None),
-                "place": result.get("place", {}).get("value", None),
-                "authorName": result.get("authorName", {}).get("value", None),
-                "authorID": result.get("authorID", {}).get("value", None),
-            }
-            objects.append(obj)
-
-        return pd.DataFrame(objects)
+        results = get(self.dbPathOrUrl + "sparql",query, True)
+        return results
 
 
-
- 
- #__________JSON____________________#
-
-class ProcessDataUploadHandler(UploadHandler):  #Cata
-    def __init__(self):
-        super().__init__()
-
-    #Create data frame with the objects ID beacuse activities refers to. (Data Frame is a function that allows us to create kind of tables with pandas)
-    def pushDataToDbObject(self, file_path: str) -> pd.DataFrame:
-        cultural_objects = pd.read_csv(file_path, keep_default_na=False,
-                            dtype={
-                                "Id": "string", 
-                                "Type": "string", 
-                                "Title": "string",
-                                "Date": "string", 
-                                "Author": "string", 
-                                "Owner": "string",
-                                "Place": "string"})
-        
-        objects_ids = cultural_objects[["Id"]]
-        objects_internal_ids = ["object-" + str(idx) for idx in range(len(objects_ids))]
-        objects_ids.insert(0, "objectId", pd.Series(objects_internal_ids, dtype="string"))
-        
-        objects_ids_df = pd.DataFrame(objects_ids)
-        objects_ids_df.to_csv('objects_ids.csv', index=False)
-        
-        return objects_ids_df
-
-    #Create a function to create 5 different tables
-    def pushDataToDbActivities(self, file_path: str, field_name: str) -> pd.DataFrame:
-        # Load JSON data from file
-        with open(file_path, 'r') as file:
-            df_activity = json.load(file)
-        
-        table_data: List[Dict[str, Any]] = []
-        
-        for item in df_activity:
-            if field_name in item:
-                field_entry = item[field_name]
-                field_entry['object id'] = item['object id']
-                table_data.append(field_entry)
-
-        # Convert the list of dictionaries to a DataFrame
-        df_activities = pd.DataFrame(table_data)
-        
-        # Convert lists in 'tool' column to comma-separated strings because lists are not readed
-        if 'tool' in df_activities.columns:
-            df_activities['tool'] = df_activities['tool'].apply(lambda x: ', '.join(x) if isinstance(x, list) else x)
-            
-        return df_activities
-
-    #Create internalId for each one (important for queries)
-    def addInternalIds(self, df: pd.DataFrame, field_name: str) -> pd.DataFrame:
-        # Create internal IDs
-        internal_ids = [f"{field_name}-{idx}" for idx in range(len(df))]
-        # Add the internal IDs as a new column
-        df.insert(0, "internalId", Series(internal_ids, dtype="string"))
-        
-        return df
-    
-    # Function to join activities with objects based on object id (to guarantee that the activities are connected with the objects)
-    def joinActivitiesWithObjects(self, df_activities: pd.DataFrame, objects_ids_df: pd.DataFrame, left_on: str, right_on: str) -> pd.DataFrame:
-        return pd.merge(df_activities, objects_ids_df, left_on=left_on, right_on=right_on, how="left")
-
-    #Replace object id with objectId (internal id of objects). Two cases with the row technique included (activities) or without this data
-    def extractAndRenameColumns(self, df: pd.DataFrame, include_technique: bool = False) -> pd.DataFrame:
-        columns = ["internalId", "object id", "responsible institute", "responsible person", "tool", "start date", "end date"]
-        if include_technique:
-            columns.insert(4, "technique")  # Insert 'technique' column before 'tool'
-        
-        identifiers = df[columns]
-        identifiers = identifiers.rename(columns={"object id": "objectId"})
-        return identifiers
-        
-    #Create individual DataFrame tables calling the pushDataToDbActivities, internal ID, etc.
-    def createTablesActivity(self, activities_file_path: str, objects_file_path: str):
-        #Create individual DataFrames
-        acquisition_df = self.pushDataToDbActivities(activities_file_path, 'acquisition')
-        processing_df = self.pushDataToDbActivities(activities_file_path, 'processing')
-        modelling_df = self.pushDataToDbActivities(activities_file_path, 'modelling')
-        optimising_df = self.pushDataToDbActivities(activities_file_path, 'optimising')
-        exporting_df = self.pushDataToDbActivities(activities_file_path, 'exporting')
-
-        #Add internal IDs to each DataFrame
-        acquisition_df = self.addInternalIds(acquisition_df, 'acquisition')
-        processing_df = self.addInternalIds(processing_df, 'processing')
-        modelling_df = self.addInternalIds(modelling_df, 'modelling')
-        optimising_df = self.addInternalIds(optimising_df, 'optimising')
-        exporting_df = self.addInternalIds(exporting_df, 'exporting')
-
-        #Load object IDs
-        objects_ids_df = self.pushDataToDbObject(objects_file_path)
-
-        #Join activity DataFrames with objects DataFrame
-        acquisition_joined = self.joinActivitiesWithObjects(acquisition_df, objects_ids_df, "object id", "objectId")
-        processing_joined = self.joinActivitiesWithObjects(processing_df, objects_ids_df, "object id", "objectId")
-        modelling_joined = self.joinActivitiesWithObjects(modelling_df, objects_ids_df, "object id", "objectId")
-        optimising_joined = self.joinActivitiesWithObjects(optimising_df, objects_ids_df, "object id", "objectId")
-        exporting_joined = self.joinActivitiesWithObjects(exporting_df, objects_ids_df, "object id", "objectId")
-
-        #Extract and rename columns, including 'technique' for acquisition
-        acquisition_final_db = self.extractAndRenameColumns(acquisition_joined, include_technique=True)
-        processing_final_db = self.extractAndRenameColumns(processing_joined)
-        modelling_final_db = self.extractAndRenameColumns(modelling_joined)
-        optimising_final_db = self.extractAndRenameColumns(optimising_joined)
-        exporting_final_db = self.extractAndRenameColumns(exporting_joined)
-        
-        #Save to SQLite database in the file
-        with connect("activities.db") as con:
-            objects_ids_df.to_sql("ObjectId", con, if_exists="replace", index=False)
-            acquisition_final_db.to_sql("Acquisition", con, if_exists="replace", index=False)
-            processing_final_db.to_sql("Processing", con, if_exists="replace", index=False)
-            modelling_final_db.to_sql("Modelling", con, if_exists="replace", index=False)
-            optimising_final_db.to_sql("Optimising", con, if_exists="replace", index=False)
-            exporting_final_db.to_sql("Exporting", con, if_exists="replace", index=False)
-        
-        #Printing the tables in the console (not necessary)
-        print("\nAcquisition DB:")
-        print(acquisition_final_db)
-        print("\nProcessing DB:")
-        print(processing_final_db)
-        print("\nModelling DB:")
-        print(modelling_final_db)
-        print("\nOptimising DB:")
-        print(optimising_final_db)
-        print("\nExporting DB:")
-        print(exporting_final_db)
-
-#How to implement the code (example):
-process_upload = ProcessDataUploadHandler()
-process_upload.createTablesActivity('process.json', 'meta.csv')
-
-
-#_____________QUERIES_____________________________
-
-class QueryHandler(Handler): #Elena
-    def __init__(self):
-        super().__init__()
-
-    def getById(self, ID: str):
-        try:
-            with connect(self.getDbPathOrUrl()) as con:
-                query = f"SELECT * FROM ObjectId WHERE Id = '{ID}'"
-                result = pd.read_sql(query, con)
-                return result
-        except Exception as e:
-            print(f"An error occurred: {e}")
+#_____________QUERIES_____________________________#elena
 
 class ProcessDataQueryHandler(QueryHandler):
     def __init__(self):
@@ -813,16 +729,17 @@ class ProcessDataQueryHandler(QueryHandler):
         try:
             # Modify the partialName parameter to include "wildcard characters" for partial matching
             # nell'input se inserisco anche solo un risultato parziale mi compare comunque
-            with connect(self.getDbPathOrUrl()) as con:
-                # Connect to the database #modific con la parte di catalina
+            with connect(self.getDbPathOrUrl()) as con: # metodo ereditato dal query handler, posso connettere al path del relational database graze al getDbPathOrUrl 
+                # with / as = construction from panda
+               # adds every colums from every table 
                 query = """
                     SELECT InternalId, "responsible institute", "responsible person", tool, "start date", "end date", objectId, technique
                     FROM acquisition
                     UNION 
-                    SELECT InternalId, "responsible institute", "responsible person", tool, "start date", "end date", NULL AS objectId, NULL AS technique
+                    SELECT InternalId, "responsible institute", "responsible person", tool, "start date", "end date", objectId, NULL AS technique
                     FROM processing
                     UNION
-                    SELECT InternalId, "responsible institute", "responsible person", tool, "start date", "end date", NULL AS objectId, NULL AS technique
+                    SELECT InternalId, "responsible institute", "responsible person", tool, "start date", "end date", objectId, NULL AS technique
                     FROM modelling
                     UNION
                     SELECT InternalId, "responsible institute", "responsible person", tool, "start date", "end date", objectId, NULL AS technique
@@ -831,6 +748,8 @@ class ProcessDataQueryHandler(QueryHandler):
                     SELECT InternalId, "responsible institute", "responsible person", tool, "start date", "end date", objectId, NULL AS technique
                     FROM exporting
                 """
+                # pd = panda
+                # pd.read_sql(query, con) executes the SQL query against the database using the connection con and returns the result as a pandas DataFrame (result of a query)
                 result = pd.read_sql(query, con)
                 return result
         except Exception as e:
@@ -844,6 +763,7 @@ class ProcessDataQueryHandler(QueryHandler):
             # nell'input se inserisco anche solo un risultato parziale mi compare comunque
 
             partial_name = f"%{partialName}%"
+            # allow me to do the partial match
             
             # Connect to the database #modific con la parte di catalina
             with connect(self.getDbPathOrUrl()) as con:
@@ -872,8 +792,12 @@ class ProcessDataQueryHandler(QueryHandler):
                 WHERE "responsible institute" LIKE ?
                 """
                 # Execute the query with the provided parameters
+                # ? = filtration according to the input, non ce l'ho in getallactivities perchè mi riporta tutte le attività
+                # qui ce l'ho perchè voglio info solo da un tipo di colonna specifica del db che è responsible institute
                 query2_table = pd.read_sql(query2, con, params=[partial_name]*5)
+                # The params argument is a list of parameters to be used in the SQL query. Since there are 5 ? placeholders in the query (one for each UNION segment), the list [partial_name]*5 is used to provide the same partial_name parameter for each placeholder.
                 return query2_table
+            #  The result of the query is returned as a pandas DataFrame and assigned to the variable query2_table.
         except Exception as e:
             print("An error occurred:", e)
             return None
@@ -1011,50 +935,1004 @@ class ProcessDataQueryHandler(QueryHandler):
             print("An error occurred:", e)
             return None
 
-        
-#__________________________ TESTS ___________________________
-
-#Calling all the functions:
 process_query = ProcessDataQueryHandler()
-process_query.setDbPathOrUrl("activities.db")
+process_query.setDbPathOrUrl("relational.db")
 
-#Calling to get all activities
-all_activities = process_query.getAllActivities()
-print("All Activities:")
-print(all_activities)
 
-#Calling to get activities by responsible institution
-partial_name_institution = "Council"
-activities_by_institution = process_query.getActivitiesByResponsibleInstitution(partial_name_institution)
-print(f"Activities by institution containing '{partial_name_institution}':")
-print(activities_by_institution)
+'''
+#____________________TESTS QUERIES_____________________
+upload = ProcessDataUploadHandler()
+upload.setDbPathOrUrl("relational.db")
+upload.pushDataToDb("data/process.json")
 
-#Calling to get activities by a responsible person
-partial_name_person = "Jane Doe"
-activities_by_person = process_query.getActivitiesByResponsiblePerson(partial_name_person)
-print(f"Activities by responsible person '{partial_name_person}':")
-print(activities_by_person)
+process_query_handler = ProcessDataQueryHandler()
+process_query_handler.setDbPathOrUrl("relational.db")
 
-#Calling to get activities by tool
-partial_name_tool = "Nikon"
-activities_by_tool = process_query.getActivitiesUsingTool(partial_name_tool)
-print(f"Activities by responsible tool '{partial_name_tool}':")
-print(activities_by_tool)
 
-#Calling to get activities started after a specific date
-start_date = "2023-04-17"
-activities_started_after = process_query.getActivitiesStartedAfter(start_date)
-print(f"Activities started after '{start_date}':")
-print(activities_started_after)
+# for mashup
+mashup = BasicMashup()
+process_query = ProcessDataQueryHandler()
+process_query.setDbPathOrUrl("relational.db")
 
-#Calling to get activities ended after a specific date
-end_date = "2023-03-04"
-activities_end_after = process_query.getActivitiesEndedBefore(end_date)
-print(f"Activities ended after '{end_date}':")
-print(activities_end_after)
+# Adding process query handler to mashup
+mashup.addProcessHandler(process_query)'''
 
-#Calling to get activities by technique
-technique_partial_name = "Structured-light 3D scanner"
-acquisitions_by_technique = process_query.getAcquisitionsByTechnique(technique_partial_name)
-print(f"Acquisitions with technique containing '{technique_partial_name}':")
-print(acquisitions_by_technique)
+'''# Calling the method 1 = 35 x 5
+partial_name_person = "Grace"
+activities_by_person = process_query_handler.getActivitiesByResponsiblePerson(partial_name_person)
+all_activities = process_query_handler.getAllActivities()
+import tabulate
+#print(tabulate.tabulate(all_activities,headers="keys"))
+print(tabulate.tabulate(activities_by_person,headers="keys"))
+
+# Call the method 2
+partial_name_person = "Grace"
+activities_by_person = process_query_handler.getActivitiesByResponsiblePerson(partial_name_person)
+print(f"Activities by tool '{partial_name_person}':")
+for person in activities_by_person:
+    print(person)
+    
+
+# Call the method 3
+partial_name_tool = "Blender"
+activities_by_tool = process_query_handler.getActivitiesUsingTool(partial_name_tool)
+print(f"Activities by tool '{partial_name_tool}':")
+for activity in activities_by_tool:
+    print(activity)
+
+
+partial_name_person = "Blender"
+activities_by_person = process_query_handler.getActivitiesUsingTool(partial_name_person)
+import tabulate
+#print(tabulate.tabulate(all_activities,headers="keys"))
+print(tabulate.tabulate(activities_by_person,headers="keys"))
+
+# Call the method 4
+partial_name_institution = "Philology"
+activities_by_institution = mashup.getActivitiesByResponsibleInstitution(partial_name_institution)
+print(f"Activities by institution '{partial_name_institution}':")
+
+for activity in activities_by_institution:
+    print(activity.getResponsibleInstitute())
+
+
+partial_name_person = "Philology"
+activities_by_person = process_query_handler.getActivitiesByResponsibleInstitution(partial_name_person)
+import tabulate
+#print(tabulate.tabulate(all_activities,headers="keys"))
+print(tabulate.tabulate(activities_by_person,headers="keys"))
+
+
+# Call the method 5
+partial_name_start = "2023"
+activities_by_start = mashup.getActivitiesStartedAfter(partial_name_start)
+print(f"Activities by start date '{partial_name_start}':")
+for activity in activities_by_start:
+    print(activity)
+
+partial_name_person = "2023-02-10"
+activities_by_person = process_query_handler.getActivitiesEndedBefore(partial_name_person)
+import tabulate
+#print(tabulate.tabulate(all_activities,headers="keys"))
+print(tabulate.tabulate(activities_by_person,headers="keys"))
+
+
+# Call the method 6
+partial_name_end = "2023-02-10"
+activities_by_end = mashup.getActivitiesEndedBefore(partial_name_end)
+print(f"Activities by end date '{partial_name_end}':")
+for activity in activities_by_end:
+    print(activity)
+
+# Call the method 7
+partial_name_technique = "Structured-light 3D scanner"
+activities_by_technique = mashup.getAcquisitionsByTechnique(partial_name_technique)
+print(f"Activities by technique '{partial_name_technique}':")
+for activity in activities_by_technique:
+    print(activity)
+    
+
+partial_name_person = "Structured-light 3D scanner"
+activities_by_person = process_query_handler.getAcquisitionsByTechnique(partial_name_person)
+import tabulate
+#print(tabulate.tabulate(all_activities,headers="keys"))
+print(tabulate.tabulate(activities_by_person,headers="keys"))'''
+
+
+#BasicMashup
+
+class BasicMashup(object):
+    def __init__(self) -> None:
+        self.metadataQuery = list()
+        self.processQuery = list()
+    
+    def cleanMetadataHandlers(self) -> bool:    #chiara
+        self.metadataQuery = []
+        return True
+
+    def cleanProcessHandlers(self) -> bool:      #cata
+        self.processQuery.clear()  #clear the process handlers list
+        return True
+
+    def addMetadataHandler(self, handler: MetadataQueryHandler) -> bool:     #bea
+        self.metadataQuery.append(handler)
+        return True
+
+    def addProcessHandler(self, handler:'ProcessDataQueryHandler') -> bool:   #elena
+        if not isinstance(handler, ProcessDataQueryHandler):
+        # check if handler is an istance of processdataqueryhandler (prevention)
+            return False
+        else:
+            self.processQuery.append(handler)  # Adds a process handler to the list
+            return True
+        
+
+        
+    def getEntityById(self, related_id: str):
+        if not self.metadataQuery:
+            return None
+
+        for handler in self.metadataQuery:
+            entity_df = handler.getById(related_id)
+
+            if entity_df.empty:
+                continue
+
+            row = entity_df.loc[0]
+
+            if not related_id.isdigit():
+                person_uri = related_id  # L'ID della persona
+                result = Person(person_uri, row["name"])
+                return result  # Restituisce l'oggetto Person immediatamente
+
+            list_of_authors = []
+            authors = self.getAuthorsOfCulturalHeritageObject(related_id)
+
+            for author in authors:
+                author_obj = Person(author.id, author.getName())
+                list_of_authors.append(author_obj)
+            
+            base_url = "http://github.com/HelloKittyDataClan/DSexam/"
+
+            if row["type"] == base_url + "NauticalChart":
+                new_object = NauticalChart(related_id, row["title"], row["owner"], row["place"],list_of_authors, row["date"])
+            elif row["type"] == base_url + "ManuscriptPlate":
+                new_object = ManuscriptPlate(related_id, row["title"], row["owner"], row["place"],list_of_authors, row["date"])
+            elif row["type"] == base_url + "ManuscriptVolume":
+                new_object = ManuscriptVolume(related_id, row["title"], row["owner"], row["place"], list_of_authors, row["date"])
+            elif row["type"] == base_url + "PrintedVolume":
+                new_object = PrintedVolume(related_id, row["title"], row["owner"], row["place"], list_of_authors, row["date"],)
+            elif row["type"] == base_url + "PrintedMaterial":
+                new_object = PrintedMaterial(related_id, row["title"], row["owner"], row["place"], list_of_authors, row["date"])
+            elif row["type"] == "https://dbpedia.org/property/Herbarium":
+                new_object = Herbarium(related_id, row["title"], row["owner"], row["place"],list_of_authors, row["date"])
+            elif row["type"] == base_url + "Specimen":
+                new_object = Specimen(related_id, row["title"], row["owner"], row["place"],list_of_authors, row["date"])
+            elif row["type"] == "https://dbpedia.org/property/Painting":
+                new_object = Painting(related_id, row["title"], row["owner"], row["place"],list_of_authors, row["date"])
+            elif row["type"] == "https://dbpedia.org/property/Model":
+                new_object = Model(related_id, row["title"], row["owner"], row["place"], list_of_authors, row["date"])
+            elif row["type"] == "https://dbpedia.org/property/Map":
+                new_object = Map(related_id, row["title"], row["owner"], row["place"],list_of_authors, row["date"])
+            else:
+                continue  # Passa all'handler successivo se il tipo dell'oggetto non corrisponde a nessuno dei tipi specificati
+
+            return new_object
+        
+
+    def getAllPeople(self):                                            #restituisce la lista delle persone 
+        # Ottieni tutte le persone usando MetadataQueryHandler
+        people = []
+        for handler in self.metadataQuery:
+            people_data = handler.getAllPeople()
+            for _, person_data in people_data.iterrows():
+                person = Person(id=person_data['author_id'], name=person_data['author_name'])
+                people.append(person)
+        return people
+    
+
+    
+
+    def getAllCulturalHeritageObjects(self) -> List[CulturalHeritageObject]:     #restituisce una lista di oggetti della classe CulturalHeritageObject che comprende tutte le entità incluse nel database accessibili tramite i gestori di query, garantendo che gli oggetti nella lista siano della classe appropriata,        
+        all_objects = []
+
+        for handler in self.metadataQuery:
+            results = handler.getAllCulturalHeritageObjects()
+
+            for _, row in results.iterrows():
+                obj_type = row['type']
+
+                
+                object_constructors = {
+                    'Map': Map,
+                    'Painting': Painting,
+                    'Model': Model,
+                    'Herbarium': Herbarium,
+                    'Specimen': Specimen,
+                    'ManuscriptPlate': ManuscriptPlate,
+                    'ManuscriptVolume': ManuscriptVolume,
+                    'PrintedVolume': PrintedVolume,
+                    'PrintedMaterial': PrintedMaterial,
+                }
+
+                
+                obj_constructor = object_constructors.get(obj_type, CulturalHeritageObject)
+
+                
+                obj = obj_constructor(
+                    id=row['id'],
+                    title=row['title'],
+                    owner=row['owner'],
+                    place=row['place'],
+                    date=row['date'],
+                    hasAuthor=row.get('authors', [])
+                )
+
+                all_objects.append(obj)
+        
+        return all_objects
+
+        
+    
+    def getAuthorsOfCulturalHeritageObject(self, id)->list[Person]:  #chiara          
+        result = []
+        dataf_list = []
+        
+        for handler in self.metadataQuery:
+            dataf_list.append(handler.getAuthorsOfCulturalHeritageObject(id)) 
+        dataf_union = pd.concat(dataf_list, ignore_index=True).fillna("")
+
+        for idx, row in dataf_union.iterrows():
+            author = row['authorName']
+            if author != "":             
+                object = Person(id=row["authorID"],name = row['authorName'])
+                result.append(object)   
+        return result
+
+    def getCulturalHeritageObjectsAuthoredBy(self, person_id: str) -> List[CulturalHeritageObject]:     #leggera modifica 
+        if not self.metadataQuery:
+            raise ValueError("No metadata query handlers set.")
+    
+        object_list = []
+    
+        for handler in self.metadataQuery:
+            objects_df = handler.getCulturalHeritageObjectsAuthoredBy(person_id)
+        
+            for _, row in objects_df.iterrows():
+                id = str(row['id'])  # Ensure ID is a string
+                title = row['title']
+                date = row.get('date')
+                if date is not None and not isinstance(date, str):
+                    date = str(date)  # Convert date to string if it's not None and not already a string
+                owner = row['owner']
+                place = row['place']
+                author_name = row['authorName']
+                author_id = str(row['authorID'])  # Ensure author ID is a string
+                author = Person(id=author_id, name=author_name)
+
+                obj_type = row['type'].split('/')[-1]
+                cultural_obj = None
+            
+           
+                if obj_type == 'NauticalChart':
+                    cultural_obj = NauticalChart(id=id, title=title, owner=owner, place=place, date=date, hasAuthor=[author])
+                elif obj_type == 'ManuscriptPlate':
+                    cultural_obj = ManuscriptPlate(id=id, title=title, owner=owner, place=place, date=date, hasAuthor=[author])
+                elif obj_type == 'ManuscriptVolume':
+                    cultural_obj = ManuscriptVolume(id=id, title=title, owner=owner, place=place, date=date, hasAuthor=[author])
+                elif obj_type == 'PrintedVolume':
+                    cultural_obj = PrintedVolume(id=id, title=title, owner=owner, place=place, date=date, hasAuthor=[author])
+                elif obj_type == 'PrintedMaterial':
+                    cultural_obj = PrintedMaterial(id=id, title=title, owner=owner, place=place, date=date, hasAuthor=[author])
+                elif obj_type == 'Herbarium':
+                    cultural_obj = Herbarium(id=id, title=title, owner=owner, place=place, date=date, hasAuthor=[author])
+                elif obj_type == 'Specimen':
+                    cultural_obj = Specimen(id=id, title=title, owner=owner, place=place, date=date, hasAuthor=[author])
+                elif obj_type == 'Painting':
+                    cultural_obj = Painting(id=id, title=title, owner=owner, place=place, date=date, hasAuthor=[author])
+                elif obj_type == 'Model':
+                    cultural_obj = Model(id=id, title=title, owner=owner, place=place, date=date, hasAuthor=[author])
+                elif obj_type == 'Map':
+                    cultural_obj = Map(id=id, title=title, owner=owner, place=place, date=date, hasAuthor=[author])
+                else:
+                    cultural_obj = CulturalHeritageObject(id=id, title=title, owner=owner, place=place, date=date, hasAuthor=[author])
+            
+                object_list.append(cultural_obj)
+
+        return object_list
+        
+
+#ELENA
+# mash up = when you fullifll you data model with the data from your queries 
+    def getAllActivities(self) -> List[Any]:
+        result = []
+        handler_list = self.processQuery
+        df_list = []
+
+        for handler in handler_list:
+            df_list.append(handler.getAllActivities())
+
+        if not df_list:
+            return pd.DataFrame()
+
+        df_union = pd.concat(df_list, ignore_index=True).drop_duplicates().fillna("")
+
+        for _, row in df_union.iterrows():
+            activity_type, id = row["internalId"].split("-")
+            obj_refers_to = self.getEntityById(row["objectId"])
+            
+
+            if activity_type == "acquisition":
+                object = Acquisition(institute=row['responsible institute'],
+                person=row['responsible person'],
+                tool=row['tool'],
+                start=row['start date'],
+                end=row['end date'],
+                technique=row['technique'],
+                refersTo_cho=obj_refers_to )
+                result.append(object)
+
+            elif activity_type == "processing":
+                object = Processing(institute=row['responsible institute'],
+                person=row['responsible person'],
+                tool=row['tool'],
+                start=row['start date'],
+                end=row['end date'],
+                refersTo_cho=obj_refers_to )
+                result.append(object)
+
+            elif activity_type == "modelling":
+                object = Modelling(institute=row['responsible institute'],
+                person=row['responsible person'],
+                tool=row['tool'],
+                start=row['start date'],
+                end=row['end date'],
+                refersTo_cho=obj_refers_to )
+                result.append(object)
+
+            elif activity_type == "optimising":
+                object = Optimising(institute=row['responsible institute'],
+                person=row['responsible person'],
+                tool=row['tool'],
+                start=row['start date'],
+                end=row['end date'],
+                refersTo_cho=obj_refers_to )
+                result.append(object)
+
+            elif activity_type == "exporting":
+                object = Exporting(institute=row['responsible institute'],
+                person=row['responsible person'],
+                tool=row['tool'],
+                start=row['start date'],
+                end=row['end date'],
+                refersTo_cho=obj_refers_to )
+                result.append(object)
+
+        return result
+
+    def getActivitiesByResponsibleInstitution(self, partialName: str) -> List[Any]:
+        result = []
+        handler_list = self.processQuery
+        df_list = []
+
+        for handler in handler_list:
+            df_list.append(handler.getActivitiesByResponsibleInstitution(partialName))
+
+        df_union = pd.concat(df_list, ignore_index=True).drop_duplicates().fillna("")
+
+        for _, row in df_union.iterrows():
+            activity_type, id = row["internalId"].split("-")
+            obj_refers_to = self.getEntityById(row["objectId"])
+
+            if activity_type == "acquisition":
+                object = Acquisition(institute=row['responsible institute'],
+                person=row['responsible person'],
+                tool=row['tool'],
+                start=row['start date'],
+                end=row['end date'],
+                technique=row['technique'],
+                refersTo_cho=obj_refers_to )
+                result.append(object)
+
+            elif activity_type == "processing":
+                object = Processing(institute=row['responsible institute'],
+                person=row['responsible person'],
+                tool=row['tool'],
+                start=row['start date'],
+                end=row['end date'],
+                refersTo_cho=obj_refers_to )
+                result.append(object)
+
+            elif activity_type == "modelling":
+                object = Modelling(institute=row['responsible institute'],
+                person=row['responsible person'],
+                tool=row['tool'],
+                start=row['start date'],
+                end=row['end date'],
+                refersTo_cho=obj_refers_to )
+                result.append(object)
+
+            elif activity_type == "optimising":
+                object = Optimising(institute=row['responsible institute'],
+                person=row['responsible person'],
+                tool=row['tool'],
+                start=row['start date'],
+                end=row['end date'],
+                refersTo_cho=obj_refers_to )
+                result.append(object)
+
+            elif activity_type == "exporting":
+                object = Exporting(institute=row['responsible institute'],
+                person=row['responsible person'],
+                tool=row['tool'],
+                start=row['start date'],
+                end=row['end date'],
+                refersTo_cho=obj_refers_to )
+                result.append(object)
+
+        return result
+
+    def getActivitiesByResponsiblePerson(self, partialName: str) -> List[Any]:
+        result = []
+        handler_list = self.processQuery
+        df_list = []
+
+        for handler in handler_list:
+            df_list.append(handler.getActivitiesByResponsiblePerson(partialName))
+
+        df_union = pd.concat(df_list, ignore_index=True).drop_duplicates().fillna("")
+
+        for _, row in df_union.iterrows():
+            activity_type, id = row["internalId"].split("-")
+            obj_refers_to = self.getEntityById(row["objectId"])
+
+            if activity_type == "acquisition":
+                object = Acquisition(institute=row['responsible institute'],
+                person=row['responsible person'],
+                tool=row['tool'],
+                start=row['start date'],
+                end=row['end date'],
+                technique=row['technique'],
+                refersTo_cho=obj_refers_to )
+                result.append(object)
+
+            elif activity_type == "processing":
+                object = Processing(institute=row['responsible institute'],
+                person=row['responsible person'],
+                tool=row['tool'],
+                start=row['start date'],
+                end=row['end date'],
+                refersTo_cho=obj_refers_to )
+                result.append(object)
+
+            elif activity_type == "modelling":
+                object = Modelling(institute=row['responsible institute'],
+                person=row['responsible person'],
+                tool=row['tool'],
+                start=row['start date'],
+                end=row['end date'],
+                refersTo_cho=obj_refers_to )
+                result.append(object)
+
+            elif activity_type == "optimising":
+                object = Optimising(institute=row['responsible institute'],
+                person=row['responsible person'],
+                tool=row['tool'],
+                start=row['start date'],
+                end=row['end date'],
+                refersTo_cho=obj_refers_to )
+                result.append(object)
+
+            elif activity_type == "exporting":
+                object = Exporting(institute=row['responsible institute'],
+                person=row['responsible person'],
+                tool=row['tool'],
+                start=row['start date'],
+                end=row['end date'],
+                refersTo_cho=obj_refers_to )
+                result.append(object)
+
+        return result
+
+    def getActivitiesUsingTool(self, partialName: str) -> List[Any]:
+        result = []
+        handler_list = self.processQuery
+        df_list = []
+
+        for handler in handler_list:
+            df_list.append(handler.getActivitiesUsingTool(partialName))
+
+        df_union = pd.concat(df_list, ignore_index=True).drop_duplicates().fillna("")
+
+        for _, row in df_union.iterrows():
+            activity_type, id = row["internalId"].split("-")
+            obj_refers_to = self.getEntityById(row["objectId"])
+
+            if activity_type == "acquisition":
+                object = Acquisition(institute=row['responsible institute'],
+                person=row['responsible person'],
+                tool=row['tool'],
+                start=row['start date'],
+                end=row['end date'],
+                technique=row['technique'],
+                refersTo_cho=obj_refers_to )
+                result.append(object)
+
+            elif activity_type == "processing":
+                object = Processing(institute=row['responsible institute'],
+                person=row['responsible person'],
+                tool=row['tool'],
+                start=row['start date'],
+                end=row['end date'],
+                refersTo_cho=obj_refers_to )
+                result.append(object)
+
+            elif activity_type == "modelling":
+                object = Modelling(institute=row['responsible institute'],
+                person=row['responsible person'],
+                tool=row['tool'],
+                start=row['start date'],
+                end=row['end date'],
+                refersTo_cho=obj_refers_to )
+                result.append(object)
+
+            elif activity_type == "optimising":
+                object = Optimising(institute=row['responsible institute'],
+                person=row['responsible person'],
+                tool=row['tool'],
+                start=row['start date'],
+                end=row['end date'],
+                refersTo_cho=obj_refers_to )
+                result.append(object)
+
+            elif activity_type == "exporting":
+                object = Exporting(institute=row['responsible institute'],
+                person=row['responsible person'],
+                tool=row['tool'],
+                start=row['start date'],
+                end=row['end date'],
+                refersTo_cho=obj_refers_to )
+                result.append(object)
+
+        return result
+
+    def getActivitiesStartedAfter(self, date: str) -> List[Any]:
+        result = []
+        handler_list = self.processQuery
+        df_list = []
+
+        for handler in handler_list:
+            df_list.append(handler.getAllActivities())
+
+        df_union = pd.concat(df_list, ignore_index=True).drop_duplicates().fillna("")
+
+        df_filtered = df_union[df_union["start date"] > date]
+
+        for _, row in df_filtered.iterrows():
+            activity_type, id = row["internalId"].split("-")
+            obj_refers_to = self.getEntityById(row["objectId"])
+
+            if activity_type == "acquisition":
+                object = Acquisition(institute=row['responsible institute'],
+                person=row['responsible person'],
+                tool=row['tool'],
+                start=row['start date'],
+                end=row['end date'],
+                technique=row['technique'],
+                refersTo_cho=obj_refers_to )
+                result.append(object)
+
+            elif activity_type == "processing":
+                object = Processing(institute=row['responsible institute'],
+                person=row['responsible person'],
+                tool=row['tool'],
+                start=row['start date'],
+                end=row['end date'],
+                refersTo_cho=obj_refers_to )
+                result.append(object)
+
+            elif activity_type == "modelling":
+                object = Modelling(institute=row['responsible institute'],
+                person=row['responsible person'],
+                tool=row['tool'],
+                start=row['start date'],
+                end=row['end date'],
+                refersTo_cho=obj_refers_to )
+                result.append(object)
+
+            elif activity_type == "optimising":
+                object = Optimising(institute=row['responsible institute'],
+                person=row['responsible person'],
+                tool=row['tool'],
+                start=row['start date'],
+                end=row['end date'],
+                refersTo_cho=obj_refers_to )
+                result.append(object)
+
+            elif activity_type == "exporting":
+                object = Exporting(institute=row['responsible institute'],
+                person=row['responsible person'],
+                tool=row['tool'],
+                start=row['start date'],
+                end=row['end date'],
+                refersTo_cho=obj_refers_to )
+                result.append(object)
+
+        return result
+
+    def getActivitiesEndedBefore(self, date: str) -> List[Any]:
+        result = []
+        handler_list = self.processQuery
+        df_list = []
+
+        for handler in handler_list:
+            df_list.append(handler.getAllActivities())
+
+        df_union = pd.concat(df_list, ignore_index=True).drop_duplicates().fillna("")
+
+        df_filtered = df_union[df_union["end date"] < date]
+
+        for _, row in df_filtered.iterrows():
+            activity_type, id = row["internalId"].split("-")
+            obj_refers_to = self.getEntityById(row["objectId"])
+
+            if activity_type == "acquisition":
+                object = Acquisition(institute=row['responsible institute'],
+                person=row['responsible person'],
+                tool=row['tool'],
+                start=row['start date'],
+                end=row['end date'],
+                technique=row['technique'],
+                refersTo_cho=obj_refers_to )
+                result.append(object)
+
+            elif activity_type == "processing":
+                object = Processing(institute=row['responsible institute'],
+                person=row['responsible person'],
+                tool=row['tool'],
+                start=row['start date'],
+                end=row['end date'],
+                refersTo_cho=obj_refers_to )
+                result.append(object)
+
+            elif activity_type == "modelling":
+                object = Modelling(institute=row['responsible institute'],
+                person=row['responsible person'],
+                tool=row['tool'],
+                start=row['start date'],
+                end=row['end date'],
+                refersTo_cho=obj_refers_to )
+                result.append(object)
+
+            elif activity_type == "optimising":
+                object = Optimising(institute=row['responsible institute'],
+                person=row['responsible person'],
+                tool=row['tool'],
+                start=row['start date'],
+                end=row['end date'],
+                refersTo_cho=obj_refers_to )
+                result.append(object)
+
+            elif activity_type == "exporting":
+                object = Exporting(institute=row['responsible institute'],
+                person=row['responsible person'],
+                tool=row['tool'],
+                start=row['start date'],
+                end=row['end date'],
+                refersTo_cho=obj_refers_to )
+                result.append(object)
+
+
+        return result
+
+    def getAcquisitionsByTechnique(self, partialName: str) -> List[Any]:
+        result = []
+        handler_list = self.processQuery
+        df_list = []
+
+        # Collect activities from handlers
+        for handler in handler_list:
+            activities = handler.getAllActivities()
+            if activities is not None and not activities.empty:
+                df_list.append(activities)
+            else:
+                print(f"No activities found in handler: {handler}")
+
+        # Check if df_list is not empty
+        if not df_list:
+            print("No activities found in any handler.")
+            return result
+
+        # Concatenate DataFrames
+        try:
+            df_union = pd.concat(df_list, ignore_index=True).drop_duplicates().fillna("")
+        except ValueError as e:
+            print(f"Error concatenating DataFrames: {e}")
+            return result
+
+        # Filter acquisitions by technique
+        try:
+            df_filtered = df_union[df_union["technique"].str.contains(partialName, case=False, na=False)]
+        except KeyError as e:
+            print(f"Key error: {e}")
+            return result
+
+        # Process each filtered row
+        for _, row in df_filtered.iterrows():
+            activity_type, id = row["internalId"].split("-")
+            obj_refers_to = self.getEntityById(row["objectId"])
+
+            if activity_type == "acquisition":
+                object = Acquisition(institute=row['responsible institute'],
+                person=row['responsible person'],
+                tool=row['tool'],
+                start=row['start date'],
+                end=row['end date'],
+                technique=row['technique'],
+                refersTo_cho=obj_refers_to )
+                result.append(object)
+
+        return result
+
+
+
+#__________________________ TESTS BASIC MASHUP___________________________
+
+#mashup = AdvancedMashup()
+process_query = ProcessDataQueryHandler()
+process_query.setDbPathOrUrl("relational.db")
+"""
+# Adding process query handler to mashup
+mashup.addProcessHandler(process_query)
+
+# Calling the method 1
+all_activities = mashup.getAllActivities()
+for i in all_activities:
+    print( i.getResponsibleInstitute(), i.getResponsiblePerson(), i.getTools(), i.getStartDate(), i.getEndDate())
+
+
+i.refersTo().id,
+# Call the method 2
+partial_name_person = "Hopper"
+activities_by_person = mashup.getActivitiesByResponsiblePerson(partial_name_person)
+for i in activities_by_person:
+    print(f"Activities by person '{partial_name_person}':")
+
+  
+# Call the method 2
+partial_name_person = "Grace"
+activities_by_person = mashup.getActivitiesByResponsiblePerson(partial_name_person)
+print(f"Activities by tool '{partial_name_person}':")
+for person in activities_by_person:
+    print(person)
+
+
+
+# Call the method 3
+partial_name_tool = "Blender"
+activities_by_tool = mashup.getActivitiesUsingTool(partial_name_tool)
+print(f"Activities by tool '{partial_name_tool}':")
+for activity in activities_by_tool:
+    print(activity.institute)
+
+
+# Call the method 4
+partial_name_institution = "Philology"
+activities_by_institution = mashup.getActivitiesByResponsibleInstitution(partial_name_institution)
+print(f"Activities by institution '{partial_name_institution}':")
+for activity in activities_by_institution:
+    print(activity)
+
+# Call the method 5
+partial_name_start = "2023"
+activities_by_start = mashup.getActivitiesStartedAfter(partial_name_start)
+print(f"Activities by start date '{partial_name_start}':")
+for activity in activities_by_start:
+    print(activity)
+
+# Call the method 6
+partial_name_end = "2023-02-10"
+activities_by_end = mashup.getActivitiesEndedBefore(partial_name_end)
+print(f"Activities by end date '{partial_name_end}':")
+for activity in activities_by_end:
+    print(activity)
+
+# Call the method 6
+partial_name_technique = "Structured-light 3D scanner"
+activities_by_technique = mashup.getAcquisitionsByTechnique(partial_name_technique)
+print(f"Activities by technique '{partial_name_technique}':")
+for activity in activities_by_technique:
+    print(activity)
+
+
+"""
+class AdvancedMashup(BasicMashup):
+    def __init__(self):
+        super().__init__()
+
+    #chiara --  restituire una lista di oggetti di tipo CulturalHeritageObject che sono stati gestiti da una responsabile persona
+    def getObjectsHandledByResponsiblePerson(self, partName: str) -> list[CulturalHeritageObject]:
+        obj_id = set()   #per memorizzare gli ID degli oggetti rilevanti dalle attività gestite dalla persona responsabile.
+    
+        for activity in self.getActivitiesByResponsiblePerson(partName):  #iteriamo sulle attività gestite dal metodo getActivitiesByResponsiblePerson
+            obj_id.add(activity.getRefersTo_cho().id)   # Per ogni attività, activity.refersTo() restituisce l'oggetto a cui l'attività fa riferimento. 
+                                                    #.id viene utilizzato per ottenere l'ID dell'oggetto e questo ID viene aggiunto all'insieme obj_id.
+    
+        cultural_objects = self.getAllCulturalHeritageObjects() # itero direttamente sugli oggetti culturali filtrando gli oggetti in base agli ID memorizzati nell'insieme obj_id.
+        obj_list = []
+
+
+        for obj in cultural_objects:    # Per ogni oggetto, verifica se l'ID dell'oggetto è presente nell'insieme obj_id. Se è presente, aggiungi l'oggetto alla lista
+            if obj.id in obj_id:
+                obj_list.append(obj)
+
+        return obj_list   #che contiene tutti gli oggetti culturali gestiti dalla persona responsabile
+
+
+    def getObjectsHandledByResponsibleInstitution(self, partialName: str) -> List[CulturalHeritageObject]:  #BEA
+        matched_objects = []
+        self.activities = []  # Lista delle attività
+
+        # Itera su tutte le attività
+        for activity in self.activities:
+            # Controlla se l'attività è gestita dall'istituzione responsabile specificata (anche parzialmente)
+            if partialName.lower() in activity.getResponsibleInstitute().lower():  
+                # Recupera l'oggetto culturale a cui si riferisce l'attività
+                cultural_heritage_object = activity.getRefersTo_cho()
+                # Verifica il tipo dell'oggetto culturale e aggiungilo alla lista se è appropriato
+                if isinstance(cultural_heritage_object, CulturalHeritageObject):
+                    matched_objects.append(cultural_heritage_object)
+
+        return matched_objects
+        
+
+    
+    def getActivitiesOnObjectsAuthoredBy(self, personId: str):
+        cultural_objects = self.getCulturalHeritageObjectsAuthoredBy(personId)
+        id_list = []
+        for cultural_object in cultural_objects:
+            object_id = cultural_object.id
+            id_list.append(object_id)
+        activities = self.getAllActivities()
+        result_list = []
+        for activity in activities:
+
+            referred_object = activity.getRefersTo_cho()
+            referred_object_id = referred_object.id
+            if referred_object_id in id_list:
+                result_list.append(activity)
+        return result_list
+    
+
+    def getAuthorsOfObjectsAcquiredInTimeFrame(self, start: str, end: str):
+        activities_started_after_start = self.getActivitiesStartedAfter(start)
+        acquisition_start = []
+        for activity in activities_started_after_start:
+            if type(activity) is Acquisition:
+                referred_object_id = (activity.getRefersTo_cho()).id
+                acquisition_start.append(referred_object_id)
+        activities_ended_before_end = self.getActivitiesEndedBefore(end)
+        acquisition_end = []
+        for activity in activities_ended_before_end:
+            if type(activity) is Acquisition:
+                referred_object_id = (activity.getRefersTo_cho()).id
+                acquisition_end.append(referred_object_id)
+        acquisition_list = []
+        for obj_id in acquisition_start:
+            if obj_id in acquisition_end:
+                acquisition_list.append(obj_id)
+        authors_of_obj = set()
+        for obj_id in acquisition_list:
+            authors = self.getAuthorsOfCulturalHeritageObject(str(obj_id))
+            for author in authors:
+                if author is not None:
+                    authors_of_obj.add((author.id, author.name))
+        authors_list = []
+        for author_tuple in authors_of_obj:
+            person = Person(id=author_tuple[0], name=author_tuple[1])
+            authors_list.append(person)
+        return authors_list
+
+'''
+mashup = AdvancedMashup()
+process_query = ProcessDataQueryHandler()
+process_query.setDbPathOrUrl("relational.db")
+process_handler= ProcessDataQueryHandler()
+metadata_handler =  MetadataQueryHandler()
+metadata_handler.setDbPathOrUrl("http://192.168.1.151:9999/blazegraph/")
+process_handler.setDbPathOrUrl("relational.db")
+
+mashup.addMetadataHandler(metadata_handler)
+mashup.addProcessHandler(process_query)
+
+#print(metadata_handler.getById("1"))
+import tabulate
+print(tabulate.tabulate(metadata_handler.getById("7"),headers="keys"))
+
+
+# Usage example:
+ 
+# Create an instance of BasicMashup
+mashup = BasicMashup()
+ 
+# Create an instance of MetadataQueryHandler with a specific endpoint URL
+handler = MetadataQueryHandler("http://192.168.1.63:9999/blazegraph/")
+ 
+# Add the metadata query handler to mashup
+mashup.addMetadataHandler(handler)
+ 
+# ID of the entity to retrieve (replace with a real ID)
+entity_id = "1"
+ 
+# Call getEntityById to retrieve an entity by ID
+entity = mashup.getEntityById(entity_id)
+ 
+
+print (entity.id)
+
+--------------
+
+#metterli
+pippo = MetadataUploadHandler()
+output = pippo.setDbPathOrUrl(" http://192.168.1.151:9999/blazegraph/")
+#prendere
+output = pippo.pushDataToDb("data/meta.csv")
+print(output)
+
+db_url = ("http://192.168.1.151:9999/blazegraph/")
+boh = QueryHandler(dbPathOrUrl=db_url)
+
+
+
+#cercare
+topolino = MetadataQueryHandler()
+output = topolino.setDbPathOrUrl(" http://192.168.1.151:9999/blazegraph/")
+
+masha = BasicMashup()
+masha.metadataQuery = [topolino]
+print(masha.getEntityById(id=4))
+
+#for bb in masha.getAuthorsOfCulturalHeritageObject(id=18):
+#    print(bb.name, bb.id)
+
+
+
+
+'''
+ 
+#------------------TEST-----------------------------
+
+'''rel_path = "relational.db"
+process = ProcessDataUploadHandler()
+process.setDbPathOrUrl(rel_path)
+process.pushDataToDb("data/process.json")
+
+#metterli
+pippo = MetadataUploadHandler("http://192.168.178.167:9999/blazegraph/")  # Passa l'argomento richiesto qui
+output = pippo.setDbPathOrUrl("http://192.168.178.167:9999/blazegraph/")
+#prendere
+output = pippo.pushDataToDb("data/meta.csv")
+print(output)
+
+process_qh = ProcessDataQueryHandler()
+process_qh.setDbPathOrUrl(rel_path)
+
+#cercare
+topolino = MetadataQueryHandler("http://192.168.178.167:9999/blazegraph/")  # Passa l'argomento richiesto qui
+output = topolino.setDbPathOrUrl("http://192.168.178.167:9999/blazegraph/")
+
+masha = BasicMashup()
+masha.metadataQuery = [topolino]
+#pp(masha.getAuthorsOfCulturalHeritageObject(id=4))
+
+#for bb in masha.getAuthorsOfCulturalHeritageObject(id=18):
+#    print(bb.name, bb.id)
+
+mashup = AdvancedMashup()
+mashup.addProcessHandler(process_qh)
+mashup.addMetadataHandler(pippo)
+
+result = mashup.getObjectsHandledByResponsibleInstitution("Philology")
+pp(result)
+
+'''

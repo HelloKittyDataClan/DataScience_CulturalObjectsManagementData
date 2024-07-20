@@ -15,14 +15,13 @@
 import unittest
 from os import sep
 from pandas import DataFrame
-from dio_2 import MetadataUploadHandler, ProcessDataUploadHandler
-from dio_2 import MetadataQueryHandler, ProcessDataQueryHandler
-from dio_2 import AdvancedMashup
-from dio_2 import Person, CulturalHeritageObject, Activity, Acquisition
+from impl import MetadataUploadHandler, ProcessDataUploadHandler
+from impl import MetadataQueryHandler, ProcessDataQueryHandler
+from impl import AdvancedMashup
+from impl import Person, CulturalHeritageObject, Activity, Acquisition
 
 # REMEMBER: before launching the tests, please run the Blazegraph instance!
 #TO RUN THE CODE ON MAC python3 -m unittest test
-
 
 
 class TestProjectBasic(unittest.TestCase):
@@ -32,39 +31,37 @@ class TestProjectBasic(unittest.TestCase):
     # the SPARQL endpoint must be updated depending on how you launch it - currently, it is
     # specified the URL introduced during the course, which is the one used for a standard
     # launch of the database.
-    metadata = "data" + sep + "meta.csv"
-    process = "data" + sep + "process.json"
+    metadata = "data/meta.csv"
+    process = "data/process.json"
     relational = "/Users/elenabinotti/Desktop/DSexam/relational.db"
     graph = "http://192.168.178.167:9999/blazegraph/"
-    
+
 
     def test_01_MetadataUploadHandler(self):
         u = MetadataUploadHandler()
         self.assertTrue(u.setDbPathOrUrl(self.graph))
         self.assertEqual(u.getDbPathOrUrl(), self.graph)
         self.assertTrue(u.pushDataToDb(self.metadata))
-    
-    
+
     def test_02_ProcessDataUploadHandler(self):
         u = ProcessDataUploadHandler()
         self.assertTrue(u.setDbPathOrUrl(self.relational))
         self.assertEqual(u.getDbPathOrUrl(), self.relational)
         self.assertTrue(u.pushDataToDb(self.process))
     
-    
     def test_03_MetadataQueryHandler(self):
         q = MetadataQueryHandler()
         self.assertTrue(q.setDbPathOrUrl(self.graph))
         self.assertEqual(q.getDbPathOrUrl(), self.graph)
 
-        self.assertIsInstance(q.getById("1"), DataFrame)
+        self.assertIsInstance(q.getById("just_a_test"), DataFrame)
 
         self.assertIsInstance(q.getAllPeople(), DataFrame)
         self.assertIsInstance(q.getAllCulturalHeritageObjects(), DataFrame)
-        self.assertIsInstance(q.getAuthorsOfCulturalHeritageObject("1"), DataFrame)
-        self.assertIsInstance(q.getCulturalHeritageObjectsAuthoredBy("ULAN:500114874"), DataFrame)
+        self.assertIsInstance(q.getAuthorsOfCulturalHeritageObject("just_a_test"), DataFrame)
+        self.assertIsInstance(q.getCulturalHeritageObjectsAuthoredBy(
+            "just_a_test"), DataFrame)
     
-
     def test_04_ProcessDataQueryHandler(self):
         q = ProcessDataQueryHandler()
         self.assertTrue(q.setDbPathOrUrl(self.relational))
@@ -80,8 +77,7 @@ class TestProjectBasic(unittest.TestCase):
         self.assertIsInstance(q.getActivitiesStartedAfter("1088-01-01"), DataFrame)
         self.assertIsInstance(q.getActivitiesEndedBefore("2029-01-01"), DataFrame)
         self.assertIsInstance(q.getAcquisitionsByTechnique("just_a_test"), DataFrame)
-
-    
+        
     def test_05_AdvancedMashup(self):
         qm = MetadataQueryHandler()
         qm.setDbPathOrUrl(self.graph)
@@ -94,7 +90,7 @@ class TestProjectBasic(unittest.TestCase):
         self.assertTrue(am.addMetadataHandler(qm))
         self.assertTrue(am.addProcessHandler(qp))
 
-        self.assertEqual(am.getEntityById("2"), None)
+        self.assertEqual(am.getEntityById("just_a_test"), None)
 
         r = am.getAllPeople()
         self.assertIsInstance(r, list)
@@ -106,12 +102,12 @@ class TestProjectBasic(unittest.TestCase):
         for i in r:
             self.assertIsInstance(i, CulturalHeritageObject)
 
-        r = am.getAuthorsOfCulturalHeritageObject("2")
+        r = am.getAuthorsOfCulturalHeritageObject("just_a_test")
         self.assertIsInstance(r, list)
         for i in r:
             self.assertIsInstance(i, Person)
 
-        r = am.getCulturalHeritageObjectsAuthoredBy("ULAN:500114874")
+        r = am.getCulturalHeritageObjectsAuthoredBy("just_a_test")
         self.assertIsInstance(r, list)
         for i in r:
             self.assertIsInstance(i, CulturalHeritageObject)
@@ -119,9 +115,7 @@ class TestProjectBasic(unittest.TestCase):
         r = am.getAllActivities()
         self.assertIsInstance(r, list)
         for i in r:
-            #print(i.institute, i.person, i.tool, i.start, i.end)
             self.assertIsInstance(i, Activity)
-
 
         r = am.getActivitiesByResponsibleInstitution("just_a_test")
         self.assertIsInstance(r, list)
@@ -152,15 +146,12 @@ class TestProjectBasic(unittest.TestCase):
         self.assertIsInstance(r, list)
         for i in r:
             self.assertIsInstance(i, Acquisition)
-        
-        
-        r = am.getActivitiesOnObjectsAuthoredBy("ULAN:500114874")
+
+        r = am.getActivitiesOnObjectsAuthoredBy("just_a_test")
         self.assertIsInstance(r, list)
         for i in r:
             self.assertIsInstance(i, Activity)
 
-
-        
         r = am.getObjectsHandledByResponsiblePerson("just_a_test")
         self.assertIsInstance(r, list)
         for i in r:
@@ -170,10 +161,8 @@ class TestProjectBasic(unittest.TestCase):
         self.assertIsInstance(r, list)
         for i in r:
             self.assertIsInstance(i, CulturalHeritageObject)
-        
-        
+
         r = am.getAuthorsOfObjectsAcquiredInTimeFrame("1088-01-01", "2029-01-01")
         self.assertIsInstance(r, list)
         for i in r:
             self.assertIsInstance(i, Person)   
-  
