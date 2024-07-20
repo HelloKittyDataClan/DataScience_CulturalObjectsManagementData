@@ -1934,3 +1934,114 @@ result = mashup.getObjectsHandledByResponsibleInstitution("Philology")
 pp(result)
 
 '''
+
+
+#TEST FINALI DI VALENTINO
+'''
+rel_path = "databases/relational.db"
+process = ProcessDataUploadHandler()
+process.setDbPathOrUrl(rel_path)
+process.pushDataToDb("data/process.json")
+# Please remember that one could, in principle, push one or more files calling the method one or more times (even calling the method twice specifying the same file!)
+
+# Then, create the graph database (remember first to run the Blazegraph instance) using the related source data
+blaz_url = "http://127.0.0.1:9999/blazegraph/" # copy-paste url appearing when the blazegraph instance is run
+grp_endpoint =  blaz_url + "sparql"
+metadata = MetadataUploadHandler()
+metadata.setDbPathOrUrl(grp_endpoint)
+metadata.pushDataToDb("data/meta.csv")
+# Please remember that one could, in principle, push one or more files calling the method one or more times (even calling the method twice specifying the same file!)
+
+# In the next passage, create the query handlers for both the databases, using the related classes
+process_qh = ProcessDataQueryHandler()
+process_qh.setDbPathOrUrl(rel_path)
+
+metadata_qh = MetadataQueryHandler()
+metadata_qh.setDbPathOrUrl(grp_endpoint)
+
+# Finally, create a advanced mashup object for asking about dataclear
+mashup = AdvancedMashup()
+mashup.addProcessHandler(process_qh)
+mashup.addProcessHandler(process_qh)
+mashup.addMetadataHandler(metadata_qh)
+mashup.addMetadataHandler(metadata_qh)
+
+result_q1 = mashup.getEntityById("22")
+print(result_q1.__dict__["authors"][0].__dict__)
+print(f"method getEntityById, wrong input: {result_q1}\n")
+result_q2 = mashup.getEntityById("33")
+print(f"method getEntityById Object: {result_q2}\n")
+result_q3 = mashup.getEntityById("VIAF:100190422")
+print(f"method getEntityById author: {result_q3}\n")
+
+result_q4 = mashup.getAllPeople()
+print(f"method getAllPeople:{result_q4}\n")
+
+result_q5 = mashup.getAllCulturalHeritageObjects()
+print(f"method getAllCulturalHeritageObjets: {result_q5}\n")
+result_q6 = mashup.getAuthorsOfCulturalHeritageObject("17")
+print(f"method getAuthorsOfCulturalHeritageObject: {result_q6}")
+result_q7 = mashup.getAuthorsOfCulturalHeritageObject("45")
+print(f"method getAuthorsOfCulturalHeritageObject wrong input: {result_q7}\n")
+
+result_q8 = mashup.getCulturalHeritageObjectsAuthoredBy("VIAF:100203985")
+print(f"method getCulturalHeritageObjectsAuthoredBy: {result_q8}\n")
+result_q9 = mashup.getCulturalHeritageObjectsAuthoredBy("VIAF:1")
+print(f"method getCulturalHeritageObjectsAuthoredBy wrong input: {result_q9}\n")
+
+result_q10 = mashup.getAllActivities()
+print(f"method getAllActivities: {result_q10}\n")
+
+result_q11 = mashup.getActivitiesByResponsibleInstitution("Heritage")
+print(f"method getActivitiesByResponsibleInstitution: {result_q11}\n")
+result_q12 = mashup.getActivitiesByResponsibleInstitution("Lidl")
+print(f"method getActivitiesByResponsibleInstitution, wrong input: {result_q12} \n")
+
+result_q12 = mashup.getActivitiesByResponsiblePerson("Hopper")
+print(f"method getActivitiesByResponsiblePerson: {result_q12}\n")
+result_q13 = mashup.getActivitiesByResponsiblePerson("Hitler")
+print(f"method getActivitiesByResponsiblePerson, wrong input:{result_q13}\n")
+
+result_q14 = mashup.getActivitiesUsingTool("Nikon")
+print(f"method getActivitiesUsingTool: {result_q14}\n")
+result_q15 = mashup.getActivitiesUsingTool("Zappa")
+print(f"method getActivitiesUsingTool, wrong input: {result_q15}\n")
+
+result_q16 = mashup.getActivitiesStartedAfter("2023-08-21")
+print(f"method getActivitiesStartedAfter: {result_q16}\n")
+result_q17 = mashup.getActivitiesStartedAfter("2028-01-01")
+print(f"method getActivitiesStartedAfter, wrong input: {result_q17}\n")
+
+result_q18 = mashup.getActivitiesEndedBefore("2023-06-10")
+print(f"method getActivitiesEndedBefore: {result_q18}\n")
+result_q19 = mashup.getActivitiesEndedBefore("2028-01-01")
+print(f"method getActivitiesEndedBefore, wrong input: {result_q19}\n")
+
+result_q20 = mashup.getAcquisitionsByTechnique("Photogrammetry")
+print(f"method getAcquisitionsByTechnique: {result_q20}\n")
+result_q21 = mashup.getAcquisitionsByTechnique("Zappa")
+print(f"method getAcquisitionsByTechnique, wrong input: {result_q21}\n")
+
+print("--- AdMash ---\n")
+
+result_q22 = mashup.getActivitiesOnObjectsAuthoredBy("VIAF:100190422")
+print(f"method getActivitiesOnObjectsAuthoredBy: {result_q22}\n")
+result_q23 = mashup.getActivitiesOnObjectsAuthoredBy("VIAF:1")
+print(f"method getActivitiesOnObjectsAuthoredBy, wrong input: {result_q23}\n")
+
+result_q24 = mashup.getObjectsHandledByResponsiblePerson("Jane")
+print(f"method getObjectsHandledByResponsiblePerson: {result_q24}\n")
+result_q25 = mashup.getObjectsHandledByResponsiblePerson("Chicoria")
+print(f"method getObjectsHandledByResponsiblePerson, wrong input: {result_q25}\n")
+
+result_q26 = mashup.getObjectsHandledByResponsibleInstitution("Heritage")
+print(f"method getObjectsHandledByResponsibleInstitution: {result_q26}\n")
+result_q27 = mashup.getObjectsHandledByResponsibleInstitution("Lidl")
+print(f"method getObjectsHandledByResponsibleInstitution, wrong input: {result_q27}\n")
+
+result_q28 = mashup.getAuthorsOfObjectsAcquiredInTimeFrame("2023-03-10", "2023-11-10")
+print(f"method getAuthorsOfObjectsAcquiredInTimeFrame: {result_q28}\n")
+result_q29 = mashup.getAuthorsOfObjectsAcquiredInTimeFrame("2028-01-01", "2029-01-01")
+print(f"method getAuthorsOfObjectsAcquiredInTimeFrame, wrong input: {result_q29}\n")
+
+'''
