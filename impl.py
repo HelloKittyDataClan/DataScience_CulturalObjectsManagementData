@@ -30,6 +30,7 @@ class Person(IdentifiableEntity):
     def getName(self):
         return self.name
 
+
 #___________________________CSV_________________________
 
 class CulturalHeritageObject(IdentifiableEntity):
@@ -89,7 +90,10 @@ class Model(CulturalHeritageObject):
 class Map(CulturalHeritageObject):
     pass
 
+
+
 #____________________ JSON______________________
+
 
 class Activity(object):                               
     def __init__(self, institute: str, person: str, tool: str|set[str]|None, start: str, end: str, refersTo_cho:CulturalHeritageObject):
@@ -117,7 +121,9 @@ class Activity(object):
     
     def getRefersTo_cho(self) -> CulturalHeritageObject:
         return self.refersTo_cho
-  
+ 
+#Subclass of Activity just with technique parameter
+ 
 class Acquisition(Activity):
     def __init__(self, institute: str, person: str,tool: str|set[str]|None, start: str, end: str, refersTo_cho: CulturalHeritageObject, technique: str):
         super().__init__(institute, person, tool, start, end, refersTo_cho)
@@ -137,7 +143,123 @@ class Optimising(Activity):
 
 class Exporting(Activity):
     pass
+ 
+'''
+class Activity(object):                               
+    def __init__(self, institute: str, person: str, tool: str|set[str]|None, start: str, end: str, refers_to:CulturalHeritageObject):
+        self.institute = institute
+        self.person = person
+        self.tool = tool         
+        self.start = start
+        self.end = end
+        self.refers_to = refers_to
+        
+    def getResponsibleInstitute(self) -> str:
+        return self.institute
+    
+    def getResponsiblePerson(self):
+        if self.person == "":
+            return None
+        else:
+            return self.person
+ 
+    def getTools(self):
+        return self.tool
+    
+    def getStartDate(self):
+        if self.start == "":
+            return None
+        else:
+            return self.start
+    
+    def getEndDate(self):
+        if self.end == "":
+            return None
+        else:
+            return self.end
+    
+    def refersTo(self) -> CulturalHeritageObject:   #---->>>non si riferisce a nessun oggetto e non ti ritorna nulla, TI DEVE RITORNARE CULTURAL OBJECT!!
+       return self.refers_to
+ 
+#Subclass of Activity just with technique parameter
+ 
+class Acquisition(Activity):
+    def __init__(self, institute: str, person: str, tool: str|set[str]|None, start: str, end: str, technique: str, refers_to:CulturalHeritageObject):
+        self.technique = technique
+        super().__init__(institute, person, tool, start, end, refers_to) #for aquisition aggiungiamo il technique quindi la prima volta che lo definiamo è qui, dobbiamo ridichiarare perchè
+        if not isinstance(technique, str):
+            raise ValueError("Acquisition.technique must be a string")
+        
+    def getTechnique(self) -> str:
+        return self.technique
+ 
+#Subclasses without defined parameters
+class Processing(Activity):
+    pass
+        
+class Modelling(Activity):
+    pass
+ 
+class Optimising(Activity):
+    pass
+ 
+class Exporting(Activity):
+    pass
 
+#Subclasses with defined parameters
+class Processing(Activity):
+    def __init__(self, institute: str, person: str, tool: str|set[str]|None, start: str, end: str, refers_to:CulturalHeritageObject):
+        super().__init__(institute, person, tool, start, end, refers_to)
+        
+class Modelling(Activity):
+    def __init__(self, institute: str, person: str, tool: str|set[str]|None, start: str, end: str, refers_to:CulturalHeritageObject):
+        super().__init__(institute, person, tool, start, end, refers_to)
+ 
+class Optimising(Activity):
+    def __init__(self, institute: str, person: str, tool: str|set[str]|None, start: str, end: str, refers_to:CulturalHeritageObject):
+        super().__init__(institute, person, tool, start, end, refers_to)
+ 
+class Exporting(Activity):
+    def __init__(self, institute: str, person: str, tool: str|set[str]|None, start: str, end: str, refers_to:CulturalHeritageObject):
+        super().__init__(institute, person, tool, start, end, refers_to)
+
+
+#TEST
+if __name__ == "__main__":
+    # Creazione di un'istanza di Person per gli autori
+    author1 = Person("1", "Carracci, Agostino (ULAN:500115349)")
+
+    # Creazione di un oggetto di tipo Painting
+    painting = Painting("13", "Portrait of Ulisse Aldrovandi", "Accademia Carrara", "Bergamo", [author1], "1582-1585")
+
+    # Creazione di un'istanza di Acquisition
+    acquisition = Acquisition("Council", "Alice Liddell", {"Nikon D7200 Nikor 50mm"}, "2023-03-24", "2023-03-24", "Photogrammetry", refers_to=painting)
+
+    # Accesso agli attributi dell'oggetto Acquisition
+    print("Dettagli dell'acquisizione:")
+    print(f"Istituto responsabile: {acquisition.getResponsibleInstitute()}")
+    print(f"Persona responsabile: {acquisition.getResponsiblePerson()}")
+    print(f"Strumenti: {acquisition.getTools()}")
+    print(f"Data di inizio: {acquisition.getStartDate()}")
+    print(f"Data di fine: {acquisition.getEndDate()}")
+    print(f"Tecnica: {acquisition.getTechnique()}")
+    print(f"Riferisce a: {acquisition.refersTo().getTitle()}")
+
+    # Creazione di un'istanza di Processing (esempio di sottoclasse senza parametri specifici)
+    processing = Processing("Council", "Alice Liddell", {"3DF Zephyr"}, "2023-03-28", "2023-03-29", refers_to=painting)
+
+    # Accesso agli attributi dell'oggetto Processing
+    print("\nDettagli dell'attività di processing:")
+    print(f"Istituto responsabile: {processing.getResponsibleInstitute()}")
+    print(f"Persona responsabile: {processing.getResponsiblePerson()}")
+    print(f"Strumenti: {processing.getTools()}")
+    print(f"Data di inizio: {processing.getStartDate()}")
+    print(f"Data di fine: {processing.getEndDate()}")
+    print(f"Riferisce a: {processing.refersTo().getTitle()}")
+
+#-------------- FINE TEST------------------------------------------
+
+'''
 
 class Handler(object):  # Chiara
     def __init__(self):
@@ -154,8 +276,15 @@ class UploadHandler(Handler):
     def __init__(self):
         super().__init__()
 
+    
+
     def pushDataToDb(self, path):
         pass
+
+
+
+
+
 
 
 class MetadataUploadHandler(UploadHandler):  # Chiara
@@ -429,7 +558,7 @@ class QueryHandler(Handler):
 
     def getById(self, id: str) -> pd.DataFrame:
         id = str(id)
-        grp_endpoint = "http://192.168.178.167:9999/blazegraph/sparql"
+        grp_endpoint = "http://127.0.0.1:9999/blazegraph/"
 
     
         if id.isdigit():
@@ -469,8 +598,6 @@ class QueryHandler(Handler):
         return results
 
 
-# cd ~/Downloads
-# java -server -Xmx1g -jar blazegraph.jar (terminal command to run Blazegraph)
 #Bea
 
 class MetadataQueryHandler(QueryHandler):
@@ -590,7 +717,7 @@ class MetadataQueryHandler(QueryHandler):
         return results
 
 
-#ELENA
+#_____________QUERIES_____________________________#elena
 
 class ProcessDataQueryHandler(QueryHandler):
     def __init__(self):
@@ -598,9 +725,11 @@ class ProcessDataQueryHandler(QueryHandler):
 
     def getAllActivities(self):
         try:
-           
-            with connect(self.getDbPathOrUrl()) as con:
-               
+            # Modify the partialName parameter to include "wildcard characters" for partial matching
+            # nell'input se inserisco anche solo un risultato parziale mi compare comunque
+            with connect(self.getDbPathOrUrl()) as con: # metodo ereditato dal query handler, posso connettere al path del relational database graze al getDbPathOrUrl 
+                # with / as = construction from panda
+               # adds every colums from every table 
                 query = """
                     SELECT InternalId, "responsible institute", "responsible person", tool, "start date", "end date", objectId, technique
                     FROM acquisition
@@ -617,16 +746,28 @@ class ProcessDataQueryHandler(QueryHandler):
                     SELECT InternalId, "responsible institute", "responsible person", tool, "start date", "end date", objectId, NULL AS technique
                     FROM exporting
                 """
+                # pd = panda
+                # pd.read_sql(query, con) executes the SQL query against the database using the connection con and returns the result as a pandas DataFrame (result of a query)
                 result = pd.read_sql(query, con)
                 return result
         except Exception as e:
             print(f"An error occurred: {e}")
 
     def getActivitiesByResponsibleInstitution(self, partialName: str): 
+        # questo è un metodo
+        #partialName lo da peroni come parametro?, è la stringa di input
         try:
+            # Modify the partialName parameter to include "wildcard characters" for partial matching
+            # nell'input se inserisco anche solo un risultato parziale mi compare comunque
+
             partial_name = f"%{partialName}%"
-          
+            # allow me to do the partial match
+            
+            # Connect to the database #modific con la parte di catalina
             with connect(self.getDbPathOrUrl()) as con:
+                # Define the SQL query with placeholders for parameters, quindi seleziono tutte le colonne
+                # con il FROM indico da che ? .... tabella
+                # con il where da che colonna
                 query2 = """
                 SELECT InternalId, "responsible institute", "responsible person", tool, "start date", "end date", objectId, technique
                 FROM acquisition
@@ -648,8 +789,13 @@ class ProcessDataQueryHandler(QueryHandler):
                 FROM exporting
                 WHERE "responsible institute" LIKE ?
                 """
+                # Execute the query with the provided parameters
+                # ? = filtration according to the input, non ce l'ho in getallactivities perchè mi riporta tutte le attività
+                # qui ce l'ho perchè voglio info solo da un tipo di colonna specifica del db che è responsible institute
                 query2_table = pd.read_sql(query2, con, params=[partial_name]*5)
+                # The params argument is a list of parameters to be used in the SQL query. Since there are 5 ? placeholders in the query (one for each UNION segment), the list [partial_name]*5 is used to provide the same partial_name parameter for each placeholder.
                 return query2_table
+            #  The result of the query is returned as a pandas DataFrame and assigned to the variable query2_table.
         except Exception as e:
             print("An error occurred:", e)
             return None
@@ -787,10 +933,108 @@ class ProcessDataQueryHandler(QueryHandler):
             print("An error occurred:", e)
             return None
 
-
-##############################
 process_query = ProcessDataQueryHandler()
 process_query.setDbPathOrUrl("relational.db")
+
+
+'''
+#____________________TESTS QUERIES_____________________
+upload = ProcessDataUploadHandler()
+upload.setDbPathOrUrl("relational.db")
+upload.pushDataToDb("data/process.json")
+
+process_query_handler = ProcessDataQueryHandler()
+process_query_handler.setDbPathOrUrl("relational.db")
+
+
+# for mashup
+mashup = BasicMashup()
+process_query = ProcessDataQueryHandler()
+process_query.setDbPathOrUrl("relational.db")
+
+# Adding process query handler to mashup
+mashup.addProcessHandler(process_query)'''
+
+'''# Calling the method 1 = 35 x 5
+partial_name_person = "Grace"
+activities_by_person = process_query_handler.getActivitiesByResponsiblePerson(partial_name_person)
+all_activities = process_query_handler.getAllActivities()
+import tabulate
+#print(tabulate.tabulate(all_activities,headers="keys"))
+print(tabulate.tabulate(activities_by_person,headers="keys"))
+
+# Call the method 2
+partial_name_person = "Grace"
+activities_by_person = process_query_handler.getActivitiesByResponsiblePerson(partial_name_person)
+print(f"Activities by tool '{partial_name_person}':")
+for person in activities_by_person:
+    print(person)
+    
+
+# Call the method 3
+partial_name_tool = "Blender"
+activities_by_tool = process_query_handler.getActivitiesUsingTool(partial_name_tool)
+print(f"Activities by tool '{partial_name_tool}':")
+for activity in activities_by_tool:
+    print(activity)
+
+
+partial_name_person = "Blender"
+activities_by_person = process_query_handler.getActivitiesUsingTool(partial_name_person)
+import tabulate
+#print(tabulate.tabulate(all_activities,headers="keys"))
+print(tabulate.tabulate(activities_by_person,headers="keys"))
+
+# Call the method 4
+partial_name_institution = "Philology"
+activities_by_institution = mashup.getActivitiesByResponsibleInstitution(partial_name_institution)
+print(f"Activities by institution '{partial_name_institution}':")
+
+for activity in activities_by_institution:
+    print(activity.getResponsibleInstitute())
+
+
+partial_name_person = "Philology"
+activities_by_person = process_query_handler.getActivitiesByResponsibleInstitution(partial_name_person)
+import tabulate
+#print(tabulate.tabulate(all_activities,headers="keys"))
+print(tabulate.tabulate(activities_by_person,headers="keys"))
+
+
+# Call the method 5
+partial_name_start = "2023"
+activities_by_start = mashup.getActivitiesStartedAfter(partial_name_start)
+print(f"Activities by start date '{partial_name_start}':")
+for activity in activities_by_start:
+    print(activity)
+
+partial_name_person = "2023-02-10"
+activities_by_person = process_query_handler.getActivitiesEndedBefore(partial_name_person)
+import tabulate
+#print(tabulate.tabulate(all_activities,headers="keys"))
+print(tabulate.tabulate(activities_by_person,headers="keys"))
+
+
+# Call the method 6
+partial_name_end = "2023-02-10"
+activities_by_end = mashup.getActivitiesEndedBefore(partial_name_end)
+print(f"Activities by end date '{partial_name_end}':")
+for activity in activities_by_end:
+    print(activity)
+
+# Call the method 7
+partial_name_technique = "Structured-light 3D scanner"
+activities_by_technique = mashup.getAcquisitionsByTechnique(partial_name_technique)
+print(f"Activities by technique '{partial_name_technique}':")
+for activity in activities_by_technique:
+    print(activity)
+    
+
+partial_name_person = "Structured-light 3D scanner"
+activities_by_person = process_query_handler.getAcquisitionsByTechnique(partial_name_person)
+import tabulate
+#print(tabulate.tabulate(all_activities,headers="keys"))
+print(tabulate.tabulate(activities_by_person,headers="keys"))'''
 
 
 #BasicMashup
@@ -821,6 +1065,7 @@ class BasicMashup(object):
             return True
         
 
+        
     def getEntityById(self, related_id: str):
         if not self.metadataQuery:
             return None
@@ -996,6 +1241,7 @@ class BasicMashup(object):
         
 
 #ELENA
+# mash up = when you fullifll you data model with the data from your queries 
     def getAllActivities(self) -> List[Any]:
         result = []
         handler_list = self.processQuery
@@ -1428,11 +1674,76 @@ class BasicMashup(object):
 
 
 
-#########
+#__________________________ TESTS BASIC MASHUP___________________________
+
+#mashup = AdvancedMashup()
 process_query = ProcessDataQueryHandler()
 process_query.setDbPathOrUrl("relational.db")
+"""
+# Adding process query handler to mashup
+mashup.addProcessHandler(process_query)
+
+# Calling the method 1
+all_activities = mashup.getAllActivities()
+for i in all_activities:
+    print( i.getResponsibleInstitute(), i.getResponsiblePerson(), i.getTools(), i.getStartDate(), i.getEndDate())
 
 
+i.refersTo().id,
+# Call the method 2
+partial_name_person = "Hopper"
+activities_by_person = mashup.getActivitiesByResponsiblePerson(partial_name_person)
+for i in activities_by_person:
+    print(f"Activities by person '{partial_name_person}':")
+
+  
+# Call the method 2
+partial_name_person = "Grace"
+activities_by_person = mashup.getActivitiesByResponsiblePerson(partial_name_person)
+print(f"Activities by tool '{partial_name_person}':")
+for person in activities_by_person:
+    print(person)
+
+
+
+# Call the method 3
+partial_name_tool = "Blender"
+activities_by_tool = mashup.getActivitiesUsingTool(partial_name_tool)
+print(f"Activities by tool '{partial_name_tool}':")
+for activity in activities_by_tool:
+    print(activity.institute)
+
+
+# Call the method 4
+partial_name_institution = "Philology"
+activities_by_institution = mashup.getActivitiesByResponsibleInstitution(partial_name_institution)
+print(f"Activities by institution '{partial_name_institution}':")
+for activity in activities_by_institution:
+    print(activity)
+
+# Call the method 5
+partial_name_start = "2023"
+activities_by_start = mashup.getActivitiesStartedAfter(partial_name_start)
+print(f"Activities by start date '{partial_name_start}':")
+for activity in activities_by_start:
+    print(activity)
+
+# Call the method 6
+partial_name_end = "2023-02-10"
+activities_by_end = mashup.getActivitiesEndedBefore(partial_name_end)
+print(f"Activities by end date '{partial_name_end}':")
+for activity in activities_by_end:
+    print(activity)
+
+# Call the method 6
+partial_name_technique = "Structured-light 3D scanner"
+activities_by_technique = mashup.getAcquisitionsByTechnique(partial_name_technique)
+print(f"Activities by technique '{partial_name_technique}':")
+for activity in activities_by_technique:
+    print(activity)
+
+
+"""
 class AdvancedMashup(BasicMashup):
     def __init__(self):
         super().__init__()
@@ -1473,7 +1784,7 @@ class AdvancedMashup(BasicMashup):
         return matched_objects
         
 
-#ELENA
+    
     def getActivitiesOnObjectsAuthoredBy(self, personId: str):
         cultural_objects = self.getCulturalHeritageObjectsAuthoredBy(personId)
         id_list = []
@@ -1519,3 +1830,107 @@ class AdvancedMashup(BasicMashup):
             person = Person(id=author_tuple[0], name=author_tuple[1])
             authors_list.append(person)
         return authors_list
+
+'''
+mashup = AdvancedMashup()
+process_query = ProcessDataQueryHandler()
+process_query.setDbPathOrUrl("relational.db")
+process_handler= ProcessDataQueryHandler()
+metadata_handler =  MetadataQueryHandler()
+metadata_handler.setDbPathOrUrl("http://192.168.1.151:9999/blazegraph/")
+process_handler.setDbPathOrUrl("relational.db")
+
+mashup.addMetadataHandler(metadata_handler)
+mashup.addProcessHandler(process_query)
+
+#print(metadata_handler.getById("1"))
+import tabulate
+print(tabulate.tabulate(metadata_handler.getById("7"),headers="keys"))
+
+
+# Usage example:
+ 
+# Create an instance of BasicMashup
+mashup = BasicMashup()
+ 
+# Create an instance of MetadataQueryHandler with a specific endpoint URL
+handler = MetadataQueryHandler("http://192.168.1.63:9999/blazegraph/")
+ 
+# Add the metadata query handler to mashup
+mashup.addMetadataHandler(handler)
+ 
+# ID of the entity to retrieve (replace with a real ID)
+entity_id = "1"
+ 
+# Call getEntityById to retrieve an entity by ID
+entity = mashup.getEntityById(entity_id)
+ 
+
+print (entity.id)
+
+--------------
+
+#metterli
+pippo = MetadataUploadHandler()
+output = pippo.setDbPathOrUrl(" http://192.168.1.151:9999/blazegraph/")
+#prendere
+output = pippo.pushDataToDb("data/meta.csv")
+print(output)
+
+db_url = ("http://192.168.1.151:9999/blazegraph/")
+boh = QueryHandler(dbPathOrUrl=db_url)
+
+
+
+#cercare
+topolino = MetadataQueryHandler()
+output = topolino.setDbPathOrUrl(" http://192.168.1.151:9999/blazegraph/")
+
+masha = BasicMashup()
+masha.metadataQuery = [topolino]
+print(masha.getEntityById(id=4))
+
+#for bb in masha.getAuthorsOfCulturalHeritageObject(id=18):
+#    print(bb.name, bb.id)
+
+
+
+
+'''
+ 
+#------------------TEST-----------------------------
+
+'''rel_path = "relational.db"
+process = ProcessDataUploadHandler()
+process.setDbPathOrUrl(rel_path)
+process.pushDataToDb("data/process.json")
+
+#metterli
+pippo = MetadataUploadHandler("http://192.168.178.167:9999/blazegraph/")  # Passa l'argomento richiesto qui
+output = pippo.setDbPathOrUrl("http://192.168.178.167:9999/blazegraph/")
+#prendere
+output = pippo.pushDataToDb("data/meta.csv")
+print(output)
+
+process_qh = ProcessDataQueryHandler()
+process_qh.setDbPathOrUrl(rel_path)
+
+#cercare
+topolino = MetadataQueryHandler("http://192.168.178.167:9999/blazegraph/")  # Passa l'argomento richiesto qui
+output = topolino.setDbPathOrUrl("http://192.168.178.167:9999/blazegraph/")
+
+masha = BasicMashup()
+masha.metadataQuery = [topolino]
+#pp(masha.getAuthorsOfCulturalHeritageObject(id=4))
+
+#for bb in masha.getAuthorsOfCulturalHeritageObject(id=18):
+#    print(bb.name, bb.id)
+
+mashup = AdvancedMashup()
+mashup.addProcessHandler(process_qh)
+mashup.addMetadataHandler(pippo)
+
+result = mashup.getObjectsHandledByResponsibleInstitution("Philology")
+pp(result)
+
+'''

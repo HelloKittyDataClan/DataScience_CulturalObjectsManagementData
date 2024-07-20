@@ -20,9 +20,11 @@ from impl import MetadataQueryHandler, ProcessDataQueryHandler
 from impl import AdvancedMashup
 from impl import Person, CulturalHeritageObject, Activity, Acquisition
 
-# REMEMBER: before launching the tests, please run the Blazegraph instance!
-#TO RUN THE CODE ON MAC python3 -m unittest test
 
+# dovremmo usarer questo ip locale http://127.0.0.1:9999/blazegraph/ ma dà problemi di parsing, quindi cambiamo l'ip ogni volta collegandolo a blazegraph.
+# va cambiato qui in riga 39 e in impl nel metodo getbyid
+# java -server -Xmx1g -jar blazegraph.jar (terminal command to run Blazegraph)
+# TO RUN THE CODE ON MAC python3 -m unittest test
 
 class TestProjectBasic(unittest.TestCase):
 
@@ -34,7 +36,7 @@ class TestProjectBasic(unittest.TestCase):
     metadata = "data/meta.csv"
     process = "data/process.json"
     relational = "relational.db"
-    graph = "http://192.168.178.167:9999/blazegraph/"
+    graph = "http://127.0.0.1:9999/blazegraph/"
 
 
     def test_01_MetadataUploadHandler(self):
