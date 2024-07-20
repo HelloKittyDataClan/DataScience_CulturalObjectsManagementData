@@ -33,7 +33,7 @@ class TestProjectBasic(unittest.TestCase):
     # launch of the database.
     metadata = "data/meta.csv"
     process = "data/process.json"
-    relational = "/Users/elenabinotti/Desktop/DSexam/relational.db"
+    relational = "relational.db"
     graph = "http://192.168.178.167:9999/blazegraph/"
 
 
