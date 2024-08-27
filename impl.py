@@ -307,7 +307,7 @@ class MetadataUploadHandler(UploadHandler):  # Chiara
                                     "Place": str,
                                 })
             # Rimuoviamo i duplicati della colonna id, mantenendo la prima istanza
-            venus.drop_duplicates(subset=["Id"], keep="first", inplace=True, ignore_index=True)
+            #venus.drop_duplicates(subset=["Id"], keep="first", inplace=True, ignore_index=True)
 
             # Define namespaces
             base_url = Namespace("http://github.com/HelloKittyDataClan/DSexam/")
@@ -346,12 +346,15 @@ class MetadataUploadHandler(UploadHandler):  # Chiara
             # Attributes related to the class Person
             name = URIRef(FOAF + "name")  # URI di FOAF http://xmlns.com/foaf/0.1/
 
+            object_mapping = dict()
+            venus.drop_duplicates(subset=["Id"], keep="first", inplace=True, ignore_index=True)
+
             # Add to the graph the Cultural Object
             for idx, row in venus.iterrows():
-                loc_id = "culturalobject-" + str(idx)
+                loc_id = "culturalobject-" + str(row["Id"])
                 subj = URIRef(base_url + loc_id)
                 if row["Id"] != "":
-                    my_graph.add((subj, id, Literal(str(row["Id"]))))
+                        my_graph.add((subj, id, Literal(str(row["Id"]))))
 
                 # Assign a resource class to the object
                 if row["Type"] != "":
@@ -391,7 +394,6 @@ class MetadataUploadHandler(UploadHandler):  # Chiara
 
             # Populating the graph with all the people
             author_id_mapping = dict()
-            object_mapping = dict()
             people_counter = 0
 
             for idx, row in venus.iterrows():
@@ -420,7 +422,7 @@ class MetadataUploadHandler(UploadHandler):  # Chiara
                                 object_mapping[object_id].add(person_uri)
                             else:
                                 object_mapping[object_id] = {person_uri}
-
+                
                 # Aggiungi l'assegnazione degli autori al grafo
                 for object_id, authors in object_mapping.items():
                     for author_uri in authors:
@@ -455,7 +457,8 @@ class MetadataUploadHandler(UploadHandler):  # Chiara
             else:
                 print("Caricamento dei dati su Blazegraph non riuscito.")
                 return False
-
+        
+        
 
 #---------------------------
 
@@ -598,7 +601,7 @@ class QueryHandler(Handler):
         return results
 
 
-#Bea
+
 
 class MetadataQueryHandler(QueryHandler):
     def __init__(self):
@@ -675,6 +678,8 @@ class MetadataQueryHandler(QueryHandler):
         """
         results = get(self.dbPathOrUrl + "sparql",query, True)
         return results
+    
+    
 
     
     def getCulturalHeritageObjectsAuthoredBy(self, personid: str) -> pd.DataFrame:
@@ -1765,6 +1770,7 @@ class AdvancedMashup(BasicMashup):
                 obj_list.append(obj)
 
         return obj_list   #che contiene tutti gli oggetti culturali gestiti dalla persona responsabile
+    
 
 
     def getObjectsHandledByResponsibleInstitution(self, partialName: str) -> List[CulturalHeritageObject]:  #BEA
@@ -1900,14 +1906,14 @@ print(masha.getEntityById(id=4))
  
 #------------------TEST-----------------------------
 
-'''rel_path = "relational.db"
+rel_path = "relational.db"
 process = ProcessDataUploadHandler()
 process.setDbPathOrUrl(rel_path)
 process.pushDataToDb("data/process.json")
 
 #metterli
-pippo = MetadataUploadHandler("http://192.168.178.167:9999/blazegraph/")  # Passa l'argomento richiesto qui
-output = pippo.setDbPathOrUrl("http://192.168.178.167:9999/blazegraph/")
+pippo = MetadataUploadHandler()  # Passa l'argomento richiesto qui
+output = pippo.setDbPathOrUrl("http://192.168.1.69:9999/blazegraph/")
 #prendere
 output = pippo.pushDataToDb("data/meta.csv")
 print(output)
@@ -1916,24 +1922,23 @@ process_qh = ProcessDataQueryHandler()
 process_qh.setDbPathOrUrl(rel_path)
 
 #cercare
-topolino = MetadataQueryHandler("http://192.168.178.167:9999/blazegraph/")  # Passa l'argomento richiesto qui
-output = topolino.setDbPathOrUrl("http://192.168.178.167:9999/blazegraph/")
+topolino = MetadataQueryHandler()  # Passa l'argomento richiesto qui
+output = topolino.setDbPathOrUrl("http://192.168.1.69:9999/blazegraph/")
 
 masha = BasicMashup()
 masha.metadataQuery = [topolino]
-#pp(masha.getAuthorsOfCulturalHeritageObject(id=4))
+pp(masha.getAuthorsOfCulturalHeritageObject(id=4))
 
 #for bb in masha.getAuthorsOfCulturalHeritageObject(id=18):
 #    print(bb.name, bb.id)
 
-mashup = AdvancedMashup()
-mashup.addProcessHandler(process_qh)
-mashup.addMetadataHandler(pippo)
+#mashup = AdvancedMashup()
+#mashup.addProcessHandler(process_qh)
+#mashup.addMetadataHandler(pippo)
 
-result = mashup.getObjectsHandledByResponsibleInstitution("Philology")
-pp(result)
+#result = mashup.getObjectsHandledByResponsibleInstitution("Philology")
+#pp(result)
 
-'''
 
 
 #TEST FINALI DI VALENTINO
