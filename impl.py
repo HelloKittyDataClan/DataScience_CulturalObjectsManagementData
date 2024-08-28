@@ -307,7 +307,7 @@ class MetadataUploadHandler(UploadHandler):  # Chiara
                                     "Place": str,
                                 })
             # Rimuoviamo i duplicati della colonna id, mantenendo la prima istanza
-            #venus.drop_duplicates(subset=["Id"], keep="first", inplace=True, ignore_index=True)
+            venus.drop_duplicates(subset=["Id"], keep="first", inplace=True, ignore_index=True)
 
             # Define namespaces
             base_url = Namespace("http://github.com/HelloKittyDataClan/DSexam/")
@@ -345,16 +345,13 @@ class MetadataUploadHandler(UploadHandler):  # Chiara
 
             # Attributes related to the class Person
             name = URIRef(FOAF + "name")  # URI di FOAF http://xmlns.com/foaf/0.1/
-
-            object_mapping = dict()
-            venus.drop_duplicates(subset=["Id"], keep="first", inplace=True, ignore_index=True)
+           
 
             # Add to the graph the Cultural Object
             for idx, row in venus.iterrows():
                 loc_id = "culturalobject-" + str(row["Id"])
                 subj = URIRef(base_url + loc_id)
-                if row["Id"] != "":
-                        my_graph.add((subj, id, Literal(str(row["Id"]))))
+               
 
                 # Assign a resource class to the object
                 if row["Type"] != "":
@@ -379,6 +376,8 @@ class MetadataUploadHandler(UploadHandler):  # Chiara
                     elif row["Type"].lower() == "map":
                         my_graph.add((subj, RDF.type, Map))
 
+                if row["Id"] != "":
+                        my_graph.add((subj, id, Literal(str(row["Id"]))))
                 # Assign title
                 if row["Title"] != "":
                     my_graph.add((subj, title, Literal(str(row["Title"]))))
@@ -392,42 +391,22 @@ class MetadataUploadHandler(UploadHandler):  # Chiara
                 if row["Place"] != "":
                     my_graph.add((subj, place, Literal(str(row["Place"]))))
 
-            # Populating the graph with all the people
-            author_id_mapping = dict()
-            people_counter = 0
-
-            for idx, row in venus.iterrows():
-                if row["Author"] != "":
+                if row["Author"] !="":
                     author_list = row["Author"].split(";")
-                    for author in author_list:
-                        if "(" in author and ")" in author:
-                            split_index = author.index("(")
-                            author_name = author[:split_index - 1].strip()
-                            author_id = author[split_index + 1:-1].strip()
+                for author in author_list:
+                    if "(" in author and ")" in author:
+                        split_index = author.index("(")
+                        author_name = author[:split_index - 1].strip()
+                        author_id = author[split_index + 1:-1].strip()
 
-                            object_id = row["Id"]
-
-                            if author_id in author_id_mapping:
-                                person_uri = author_id_mapping[author_id]
-                            else:
-                                local_id = "person-" + str(people_counter)
-                                person_uri = URIRef(base_url + local_id)
-                                my_graph.add((person_uri, RDF.type, Person))
-                                my_graph.add((person_uri, id, Literal(author_id)))
-                                my_graph.add((person_uri, name, Literal(author_name)))
-                                author_id_mapping[author_id] = person_uri
-                                people_counter += 1
-
-                            if object_id in object_mapping:
-                                object_mapping[object_id].add(person_uri)
-                            else:
-                                object_mapping[object_id] = {person_uri}
+                        subj_person = URIRef(base_url + author_id)
                 
-                # Aggiungi l'assegnazione degli autori al grafo
-                for object_id, authors in object_mapping.items():
-                    for author_uri in authors:
-                        my_graph.add((URIRef(base_url +"culturalobject-" + object_id), relAuthor, author_uri))  # MODIFICA!!! mancava culturalheritageobject come parte del predicato
+                        my_graph.add((subj, relAuthor, subj_person))
+                        my_graph.add((subj_person, name, Literal(author_name)))
+                        my_graph.add((subj_person, id, Literal(author_id)))
 
+
+               
             # Store RDF data in SPARQL endpoint
             store = SPARQLUpdateStore()
             endpoint = self.getDbPathOrUrl() + "sparql"
@@ -561,13 +540,15 @@ class QueryHandler(Handler):
 
     def getById(self, id: str) -> pd.DataFrame:
         id = str(id)
-        grp_endpoint = "http://127.0.0.1:9999/blazegraph/"
+        grp_endpoint = "http://192.168.1.69:9999/blazegraph/"
 
     
         if id.isdigit():
             query = """
             PREFIX FOAF: <http://xmlns.com/foaf/0.1>
             PREFIX schema: <http://schema.org/>
+            PREFIX base_url: <http://github.com/HelloKittyDataClan/DSexam/>
+            
             SELECT DISTINCT ?object ?id ?type ?title ?date ?owner ?place ?author ?author_name ?author_id 
             WHERE {
                 ?object <http://schema.org/identifier> "%s" .
@@ -599,6 +580,7 @@ class QueryHandler(Handler):
     
         results = get(grp_endpoint, query, True)
         return results
+    
 
 
 
@@ -1069,7 +1051,6 @@ class BasicMashup(object):
             self.processQuery.append(handler)  # Adds a process handler to the list
             return True
         
-
         
     def getEntityById(self, related_id: str):
         if not self.metadataQuery:
@@ -1090,6 +1071,8 @@ class BasicMashup(object):
 
             list_of_authors = []
             authors = self.getAuthorsOfCulturalHeritageObject(related_id)
+           
+            
 
             for author in authors:
                 author_obj = Person(author.id, author.getName())
@@ -1121,6 +1104,7 @@ class BasicMashup(object):
                 continue  # Passa all'handler successivo se il tipo dell'oggetto non corrisponde a nessuno dei tipi specificati
 
             return new_object
+        
         
 
     def getAllPeople(self):                                            #restituisce la lista delle persone 
@@ -1925,9 +1909,13 @@ process_qh.setDbPathOrUrl(rel_path)
 topolino = MetadataQueryHandler()  # Passa l'argomento richiesto qui
 output = topolino.setDbPathOrUrl("http://192.168.1.69:9999/blazegraph/")
 
+issn = QueryHandler()
+pp(issn.getById())
+
+
 masha = BasicMashup()
 masha.metadataQuery = [topolino]
-pp(masha.getAuthorsOfCulturalHeritageObject(id=4))
+pp(masha.getEntityById(19))
 
 #for bb in masha.getAuthorsOfCulturalHeritageObject(id=18):
 #    print(bb.name, bb.id)
