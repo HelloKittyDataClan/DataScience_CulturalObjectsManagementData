@@ -20,11 +20,7 @@ from impl import MetadataQueryHandler, ProcessDataQueryHandler
 from impl import AdvancedMashup
 from impl import Person, CulturalHeritageObject, Activity, Acquisition
 
-
-# dovremmo usarer questo ip locale http://127.0.0.1:9999/blazegraph/ ma dà problemi di parsing, quindi cambiamo l'ip ogni volta collegandolo a blazegraph.
-# va cambiato qui in riga 39 e in impl nel metodo getbyid
-# java -server -Xmx1g -jar blazegraph.jar (terminal command to run Blazegraph)
-# TO RUN THE CODE ON MAC python3 -m unittest test
+# REMEMBER: before launching the tests, please run the Blazegraph instance!
 
 class TestProjectBasic(unittest.TestCase):
 
@@ -33,12 +29,11 @@ class TestProjectBasic(unittest.TestCase):
     # the SPARQL endpoint must be updated depending on how you launch it - currently, it is
     # specified the URL introduced during the course, which is the one used for a standard
     # launch of the database.
-    metadata = "data/meta.csv"
-    process = "data/process.json"
+    metadata = "data" + sep + "meta.csv"
+    process = "data" + sep + "process.json"
     relational = "relational.db"
-    graph = "http://127.0.0.1:9999/blazegraph/"
-
-
+    graph = "http://10.201.49.236:9999/blazegraph/"
+    
     def test_01_MetadataUploadHandler(self):
         u = MetadataUploadHandler()
         self.assertTrue(u.setDbPathOrUrl(self.graph))
