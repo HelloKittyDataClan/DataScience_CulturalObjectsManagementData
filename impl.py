@@ -1485,21 +1485,20 @@ class AdvancedMashup(BasicMashup):
 
 
 
-    def getObjectsHandledByResponsibleInstitution(self, partialName: str) -> List[CulturalHeritageObject]:  
-        matched_objects = []
-        self.activities = []  # Lista delle attività
+    def getObjectsHandledByResponsibleInstitution(self, partName: str) -> list[CulturalHeritageObject]: 
+        obj_id = set()  
 
-        # Itera su tutte le attività
-        for activity in self.activities:
-            # Controlla se l'attività è gestita dall'istituzione responsabile specificata (anche parzialmente)
-            if partialName.lower() in activity.getResponsibleInstitute().lower():  
-                # Recupera l'oggetto culturale a cui si riferisce l'attività
-                cultural_heritage_object = activity.getRefersTo_cho()
-                # Verifica il tipo dell'oggetto culturale e aggiungilo alla lista se è appropriato
-                if isinstance(cultural_heritage_object, CulturalHeritageObject):
-                    matched_objects.append(cultural_heritage_object)
+        for activity in self.getActivitiesByResponsibleInstitution(partName):  
+            obj_id.add(activity.refersTo_cho.id)  
 
-        return matched_objects
+        cultural_objects = self.getAllCulturalHeritageObjects()  
+        obj_list = []
+
+        for obj in cultural_objects:
+            if obj.id in obj_id:
+                obj_list.append(obj) 
+
+        return obj_list  
         
 
     
