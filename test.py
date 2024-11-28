@@ -25,14 +25,15 @@ from impl import Person, CulturalHeritageObject, Activity, Acquisition
 class TestProjectBasic(unittest.TestCase):
 
     # The paths of the files used in the test should change depending on what you want to use
-    # and the folder where they are. Instead, for the graph database, the URL to talk with
+    # and the folder where they are. 
+    # Instead, for the graph database, the URL to talk with
     # the SPARQL endpoint must be updated depending on how you launch it - currently, it is
     # specified the URL introduced during the course, which is the one used for a standard
     # launch of the database.
     metadata = "data" + sep + "meta.csv"
     process = "data" + sep + "process.json"
     relational = "relational.db"
-    graph = "http://10.201.49.236:9999/blazegraph/"
+    graph = "http://10.201.21.75:9999/blazegraph/"
     
     def test_01_MetadataUploadHandler(self):
         u = MetadataUploadHandler()

@@ -15,7 +15,7 @@ from os import sep
 process = "data" + sep + "process.json"
  
 
-class IdentifiableEntity(object): #identifichiamo l'ID
+class IdentifiableEntity(object): 
     def __init__(self, id: str):
         self.id = id 
 
@@ -96,7 +96,7 @@ class Map(CulturalHeritageObject):
 
 
 class Activity(object):                               
-    def __init__(self, institute: str, person: str, tool: str|set[str]|None, start: str, end: str, refersTo_cho:CulturalHeritageObject):
+    def __init__(self, institute: str, person: str, tool: set[str], start: str, end: str, refersTo_cho:CulturalHeritageObject):
         self.institute = institute
         self.person = person
         self.tool = tool         
@@ -108,7 +108,7 @@ class Activity(object):
         return self.institute
     
     def getResponsiblePerson(self) -> Optional[str]:
-        return self.person
+        return self.person ########################################## deve restituire None if string is empty (vale anche per i metodi successivi)
     
     def getTools(self) -> set: # getTool has arity zero or more [0..*]
         return self.tool
@@ -119,13 +119,13 @@ class Activity(object):
     def getEndDate(self) -> Optional[str]:
         return self.end
     
-    def getRefersTo_cho(self) -> CulturalHeritageObject:
+    def refersTo(self) -> CulturalHeritageObject:
         return self.refersTo_cho
  
 #Subclass of Activity just with technique parameter
  
 class Acquisition(Activity):
-    def __init__(self, institute: str, person: str,tool: str|set[str]|None, start: str, end: str, refersTo_cho: CulturalHeritageObject, technique: str):
+    def __init__(self, institute: str, person: str,tool: set[str], start: str, end: str, refersTo_cho: CulturalHeritageObject, technique: str):
         super().__init__(institute, person, tool, start, end, refersTo_cho)
         self.technique = technique
     
@@ -145,7 +145,7 @@ class Exporting(Activity):
     pass
  
 
-class Handler(object):  # Chiara
+class Handler(object):  # chiara
     def __init__(self):
         self.dbPathOrUrl = ""
 
@@ -165,12 +165,11 @@ class UploadHandler(Handler):
 
 
 
-class MetadataUploadHandler(UploadHandler):  # Chiara
+class MetadataUploadHandler(UploadHandler):  # chiara
     def __init__(self):  
         super().__init__()
 
     def pushDataToDb(self, path) -> bool:
-
             my_graph = Graph()
             # Read the data from the csv file and store them into a dataframe
             venus = pd.read_csv(path,
@@ -229,8 +228,7 @@ class MetadataUploadHandler(UploadHandler):  # Chiara
             for idx, row in venus.iterrows():
                 loc_id = "culturalobject-" + str(row["Id"])
                 subj = URIRef(base_url + loc_id)
-               
-
+        
                 # Assign a resource class to the object
                 if row["Type"] != "":
                     if row["Type"].lower() == "nautical chart":
@@ -258,7 +256,8 @@ class MetadataUploadHandler(UploadHandler):  # Chiara
                         my_graph.add((subj, id, Literal(str(row["Id"]))))
                 # Assign title
                 if row["Title"] != "":
-                    my_graph.add((subj, title, Literal(str(row["Title"]))))
+                    title_value = row["Title"].strip()
+                    my_graph.add((subj, title, Literal(str(title_value)))) 
                 # Assign date
                 if row["Date"] != "":
                     my_graph.add((subj, date, Literal(str(row["Date"]))))
@@ -283,10 +282,9 @@ class MetadataUploadHandler(UploadHandler):  # Chiara
                             
                             # Aggiungi le triple RDF per collegare l'oggetto principale (subj) con l'autore
                             my_graph.add((subj, relAuthor, related_person))  # Oggetto principale -> Autore (relazione)
-                            
                             # Aggiungi il nome e l'ID dell'autore all'URI della persona
-                            my_graph.add((related_person, name, Literal(author_name)))  # Nome della persona
-                            my_graph.add((related_person, id, Literal(author_id)))  # ID della persona
+                            my_graph.add((related_person, name, Literal(author_name))) 
+                            my_graph.add((related_person, id, Literal(author_id))) 
                             
                
             # Store RDF data in SPARQL endpoint
@@ -321,13 +319,6 @@ class MetadataUploadHandler(UploadHandler):  # Chiara
         
         
 
-#---------------------------
-
-# Define the data type for lists of dictionaries
-DataType = List[Dict[str, Any]]
-
-# qui c'era class Handler(object):  # Chiara e class UploadHandler(Handler)
-# ma non so sto datatype qi sopra dove deve andare
 
 
 #_____________________RELATIONAL DATA BASE____________________________
@@ -420,9 +411,19 @@ class QueryHandler(Handler):
         super().__init__()
     
 
-    def getById(self, id: str) -> pd.DataFrame:
+    def getById(self, id: str) -> pd.DataFrame:     #bea
         id = str(id)
-    
+        
+        if self.getDbPathOrUrl().startswith("http"):
+            db_address = self.getDbPathOrUrl()
+        else:
+            return pd.DataFrame() 
+        
+          # Se l'URL è valido, aggiungi "sparql" all'endpoint
+        endpoint = db_address + "sparql" if db_address.endswith("/") else db_address + "/sparql"
+
+
+        # Se l'ID è numerico
         if id.isdigit():
             query = """
             SELECT DISTINCT ?object ?id ?type ?title ?date ?owner ?place ?author ?author_name ?author_id 
@@ -438,10 +439,10 @@ class QueryHandler(Handler):
                 OPTIONAL {?object <http://schema.org/author> ?author .}
                 OPTIONAL {?author <http://xmlns.com/foaf/0.1/name> ?author_name .}
                 OPTIONAL {?author <http://schema.org/identifier> ?author_id .}
-                
             }
             """ % id
         else:
+            # Se l'ID non è numerico
             query = """
             SELECT DISTINCT ?uri ?author_name ?author_id 
             WHERE {
@@ -451,18 +452,16 @@ class QueryHandler(Handler):
                 ?object <http://schema.org/author> ?uri .
             }
             """ % id
-    
-        results = get(self.dbPathOrUrl + "sparql", query, True)
-        return results
- 
 
-    
+        results = get(endpoint, query, True) 
+        return results
+       
 
 class MetadataQueryHandler(QueryHandler):
     def __init__(self):
         super().__init__()
     
-    def getAllPeople(self):
+    def getAllPeople(self):         #chiara
         query = """
         PREFIX FOAF: <http://xmlns.com/foaf/0.1/>
         PREFIX schema: <http://schema.org/>
@@ -475,11 +474,11 @@ class MetadataQueryHandler(QueryHandler):
                 FOAF:name ?name_auth .
                     }
         """
-        results = get(self.dbPathOrUrl + "sparql",query, True)
+        results = get(self.dbPathOrUrl + "sparql", query, True)
         return results
 
     
-    def getAllCulturalHeritageObjects(self):
+    def getAllCulturalHeritageObjects(self):        #bea
         query = """
         PREFIX schema: <http://schema.org/>
         PREFIX base_url: <http://github.com/HelloKittyDataClan/DSexam/>
@@ -518,7 +517,7 @@ class MetadataQueryHandler(QueryHandler):
         return results       
     
 
-    def getAuthorsOfCulturalHeritageObject(self, object_id: str) -> pd.DataFrame:        #modifica per ottenere un object id con la query giusta
+    def getAuthorsOfCulturalHeritageObject(self, object_id: str) -> pd.DataFrame:          #chiara
         query = f"""
         PREFIX schema: <http://schema.org/>
         PREFIX foaf: <http://xmlns.com/foaf/0.1/>
@@ -536,10 +535,8 @@ class MetadataQueryHandler(QueryHandler):
         return results
     
     
-
-    
-    def getCulturalHeritageObjectsAuthoredBy(self, personid: str) -> pd.DataFrame:
-        query = f"""
+    def getCulturalHeritageObjectsAuthoredBy(self, personid: str) -> pd.DataFrame:          #bea
+        query = f"""    
         PREFIX schema: <http://schema.org/>
         PREFIX base_url: <http://github.com/HelloKittyDataClan/DSexam/>
         PREFIX db: <https://dbpedia.org/property/>
@@ -792,7 +789,7 @@ class ProcessDataQueryHandler(QueryHandler):
                 return query_table
         except Exception as e:
             print("An error occurred:", e)
-            return None
+            return None #deve sempre restituire df, eventualmente vuoto (anche per metodi precedenti)
 
 process_query = ProcessDataQueryHandler()
 process_query.setDbPathOrUrl("relational.db")
@@ -824,7 +821,7 @@ class BasicMashup(object):
             self.processQuery.append(handler)  # Adds a process handler to the list
             return True
         
-    def getEntityById(self, related_id: str):
+    def getEntityById(self, related_id: str):   #bea
         if not self.metadataQuery:
             return None
 
@@ -843,68 +840,58 @@ class BasicMashup(object):
 
             # Assicurati che authors sia una lista
             authors = self.getAuthorsOfCulturalHeritageObject(related_id)
-            list_of_authors = []
 
-            # Itera correttamente sugli autori, assumendo che authors sia una lista di dizionari
-            for author in authors:
-                author_id = author.name
-                author_name = author.id
-                author = Person(id=author_id, name=author_name)
-                list_of_authors.append(author)
-
-            base_url = "http://github.com/HelloKittyDataClan/DSexam/"
+            base_url = "http://github.com/HelloKittyDataClan/DSexam/" 
 
             # Creazione dell'oggetto basato sul tipo
             if row["type"] == base_url + "NauticalChart":
                 new_object = NauticalChart(
-                    related_id, row["title"], row["owner"], row["place"], list_of_authors, row["date"]
+                    row["title"], row["owner"], row["place"], authors, row["date"], related_id
                 )
             elif row["type"] == base_url + "ManuscriptPlate":
                 new_object = ManuscriptPlate(
-                    related_id, row["title"], row["owner"], row["place"], list_of_authors, row["date"]
+                    row["title"], row["owner"], row["place"], authors, row["date"], related_id
                 )
             elif row["type"] == base_url + "ManuscriptVolume":
                 new_object = ManuscriptVolume(
-                    related_id, row["title"], row["owner"], row["place"], list_of_authors, row["date"]
+                    row["title"], row["owner"], row["place"], authors, row["date"], related_id
                 )
             elif row["type"] == base_url + "PrintedVolume":
                 new_object = PrintedVolume(
-                    related_id, row["title"], row["owner"], row["place"], list_of_authors, row["date"]
+                    row["title"], row["owner"], row["place"], authors, row["date"], related_id
                 )
             elif row["type"] == base_url + "PrintedMaterial":
                 new_object = PrintedMaterial(
-                    related_id, row["title"], row["owner"], row["place"], list_of_authors, row["date"]
+                    row["title"], row["owner"], row["place"], authors, row["date"], related_id
                 )
             elif row["type"] == "https://dbpedia.org/property/Herbarium":
                 new_object = Herbarium(
-                    related_id, row["title"], row["owner"], row["place"], list_of_authors, row["date"]
+                    row["title"], row["owner"], row["place"], authors, row["date"], related_id
                 )
             elif row["type"] == base_url + "Specimen":
                 new_object = Specimen(
-                    related_id, row["title"], row["owner"], row["place"], list_of_authors, row["date"]
+                    row["title"], row["owner"], row["place"], authors, row["date"], related_id
                 )
             elif row["type"] == "https://dbpedia.org/property/Painting":
                 new_object = Painting(
-                    related_id, row["title"], row["owner"], row["place"], list_of_authors, row["date"]
+                    row["title"], row["owner"], row["place"], authors, row["date"], related_id
                 )
             elif row["type"] == "https://dbpedia.org/property/Model":
                 new_object = Model(
-                    related_id, row["title"], row["owner"], row["place"], list_of_authors, row["date"]
+                    row["title"], row["owner"], row["place"], authors, row["date"], related_id
                 )
             elif row["type"] == "https://dbpedia.org/property/Map":
                 new_object = Map(
-                    related_id, row["title"], row["owner"], row["place"], list_of_authors, row["date"]
+                    row["title"], row["owner"], row["place"], authors, row["date"], related_id
                 )
             else:
                 continue
 
             return new_object
-
         return None
 
         
-    def getAllPeople(self):                                            #restituisce la lista delle persone 
-        # Ottieni tutte le persone usando MetadataQueryHandler
+    def getAllPeople(self):                                            #chiara
         people = []
         for handler in self.metadataQuery:
             people_data = handler.getAllPeople()
@@ -914,18 +901,17 @@ class BasicMashup(object):
         return people
         
   
-    def getAllCulturalHeritageObjects(self) -> list[CulturalHeritageObject]:
+    def getAllCulturalHeritageObjects(self) -> list[CulturalHeritageObject]:    #bea
         cultural_objects = {}
 
         for metadata in self.metadataQuery:
             # Ottieni il dataframe degli oggetti culturali
-            df_objects = metadata.getAllCulturalHeritageObjects().sort_values(by="id")
-
+            df_objects = metadata.getAllCulturalHeritageObjects()
             for _, row in df_objects.iterrows():
                 # Estrai le informazioni principali dell'oggetto culturale
                 obj_id = str(row.id)
                 title = row.title.strip()
-                date = row.date if not pd.isna(row.date) else None
+                date = row.date if not pd.isna(row.date) else None 
                 owner = row.owner
                 place = row.place
 
@@ -942,7 +928,7 @@ class BasicMashup(object):
                 object_type = row.type.split("/")[-1]  # Estrai l'ultima parte dell'URI, es. "Map"
                 
                 # Ottieni la classe corrispondente dinamicamente
-                obj_class = globals().get(object_type, CulturalHeritageObject)  
+                obj_class = globals().get(object_type)  
 
                 # Instanzia l'oggetto culturale
                 obj_instance = obj_class(
@@ -957,7 +943,7 @@ class BasicMashup(object):
                 # Aggiungi l'oggetto alla lista, evitando duplicati
                 cultural_objects[obj_id] = obj_instance
 
-        return list(cultural_objects.values())
+        return list(cultural_objects.values()) 
 
             
     
@@ -977,7 +963,7 @@ class BasicMashup(object):
         return result
     
 
-    def getCulturalHeritageObjectsAuthoredBy(self, personid: str) -> List[CulturalHeritageObject]:     #leggera modifica 
+    def getCulturalHeritageObjectsAuthoredBy(self, personid: str) -> List[CulturalHeritageObject]:      #bea
         if not self.metadataQuery:
             raise ValueError("No metadata query handlers set.")
     
@@ -1440,7 +1426,7 @@ class BasicMashup(object):
 
         # Filter acquisitions by technique
         try:
-            df_filtered = df_union[df_union["technique"].str.contains(partialName, case=False, na=False)]
+            df_filtered = df_union[df_union["technique"].str.contains(partialName, case=False, na=False)] 
         except KeyError as e:
             print(f"Key error: {e}")
             return result
@@ -1468,28 +1454,27 @@ class AdvancedMashup(BasicMashup):
     def __init__(self):
         super().__init__()
 
-    def getObjectsHandledByResponsiblePerson(self, partName: str) -> list[CulturalHeritageObject]: #Chiara 
-        obj_id = set()  # Per memorizzare gli ID degli oggetti rilevanti dalle attività gestite dalla persona responsabile.
+    def getObjectsHandledByResponsiblePerson(self, partName: str) -> list[CulturalHeritageObject]: #chiara 
+        obj_id = set()  
 
         for activity in self.getActivitiesByResponsiblePerson(partName):  
-            obj_id.add(activity.refersTo_cho.id)  # Aggiunge l'ID dell'oggetto al set.
+            obj_id.add(activity.refersTo().id)  
 
-        cultural_objects = self.getAllCulturalHeritageObjects()  # Recupera tutti gli oggetti culturali.
+        cultural_objects = self.getAllCulturalHeritageObjects() 
         obj_list = []
 
         for obj in cultural_objects:
             if obj.id in obj_id:
-                obj_list.append(obj)  # Aggiunge l'oggetto alla lista se l'ID è presente nel set.
-
+                obj_list.append(obj) 
         return obj_list  
 
 
 
-    def getObjectsHandledByResponsibleInstitution(self, partName: str) -> list[CulturalHeritageObject]: 
+    def getObjectsHandledByResponsibleInstitution(self, partName: str) -> list[CulturalHeritageObject]:     #bea
         obj_id = set()  
 
         for activity in self.getActivitiesByResponsibleInstitution(partName):  
-            obj_id.add(activity.refersTo_cho.id)  
+            obj_id.add(activity.refersTo().id)  
 
         cultural_objects = self.getAllCulturalHeritageObjects()  
         obj_list = []
@@ -1512,7 +1497,7 @@ class AdvancedMashup(BasicMashup):
         result_list = []#
         for activity in activities:
 
-            referred_object = activity.getRefersTo_cho()
+            referred_object = activity.refersTo()
             referred_object_id = referred_object.id
             if referred_object_id in id_list:
                 result_list.append(activity)
@@ -1524,13 +1509,13 @@ class AdvancedMashup(BasicMashup):
         acquisition_start = []
         for activity in activities_started_after_start:
             if type(activity) is Acquisition:
-                referred_object_id = (activity.getRefersTo_cho()).id
+                referred_object_id = (activity.refersTo()).id
                 acquisition_start.append(referred_object_id)
         activities_ended_before_end = self.getActivitiesEndedBefore(end)
         acquisition_end = []
         for activity in activities_ended_before_end:
             if type(activity) is Acquisition:
-                referred_object_id = (activity.getRefersTo_cho()).id
+                referred_object_id = (activity.refersTo()).id
                 acquisition_end.append(referred_object_id)
         acquisition_list = []
         for obj_id in acquisition_start:
@@ -1550,6 +1535,8 @@ class AdvancedMashup(BasicMashup):
 
  
 #------------------TEST-----------------------------
+''' 
+from tabulate import tabulate  # Libreria per il formato tabellare
 
 # Step 1: Configura l'ambiente
 rel_path = "relational.db"
@@ -1561,26 +1548,26 @@ process.pushDataToDb("data/process.json")
 
 # Step 3: Carica i dati RDF nel database Blazegraph
 pippo = MetadataUploadHandler()
-output = pippo.setDbPathOrUrl("http://10.201.49.236:9999/blazegraph/")
+output = pippo.setDbPathOrUrl("http://192.168.1.187:9999/blazegraph/")
 output = pippo.pushDataToDb("data/meta.csv")
 print("Metadata Upload Output:", output)
 
 # Step 4: Configura il gestore delle query per Blazegraph
 topolino = MetadataQueryHandler()
-topolino.setDbPathOrUrl("http://10.201.49.236:9999/blazegraph/")
+topolino.setDbPathOrUrl("http://192.168.1.187:9999/blazegraph/")
 
 # Step 5: Configura il gestore dei processi
 process_qh = ProcessDataQueryHandler()
 process_qh.setDbPathOrUrl(rel_path)
 
-# Step 6: Configura e utilizza il mashup per ottenere tutti gli oggetti di patrimonio culturale
+# Step 6: Configura e utilizza il mashup per ottenere i risultati combinati
 masha = BasicMashup()
 masha.metadataQuery = [topolino]
 
 mashup = AdvancedMashup()
 mashup.addProcessHandler(process_qh)
 mashup.addMetadataHandler(topolino)
-
+''' 
 
 
 
@@ -1597,18 +1584,15 @@ pp(result)
 
 
 #TEST FINALI DI VALENTINO
-'''
-rel_path = "databases/relational.db"
+
+rel_path = "relational.db"
 process = ProcessDataUploadHandler()
 process.setDbPathOrUrl(rel_path)
 process.pushDataToDb("data/process.json")
 # Please remember that one could, in principle, push one or more files calling the method one or more times (even calling the method twice specifying the same file!)
 
-# Then, create the graph database (remember first to run the Blazegraph instance) using the related source data
-blaz_url = "http://127.0.0.1:9999/blazegraph/" # copy-paste url appearing when the blazegraph instance is run
-grp_endpoint =  blaz_url + "sparql"
 metadata = MetadataUploadHandler()
-metadata.setDbPathOrUrl(grp_endpoint)
+metadata.setDbPathOrUrl("http://10.201.21.75:9999/blazegraph/")
 metadata.pushDataToDb("data/meta.csv")
 # Please remember that one could, in principle, push one or more files calling the method one or more times (even calling the method twice specifying the same file!)
 
@@ -1617,91 +1601,15 @@ process_qh = ProcessDataQueryHandler()
 process_qh.setDbPathOrUrl(rel_path)
 
 metadata_qh = MetadataQueryHandler()
-metadata_qh.setDbPathOrUrl(grp_endpoint)
+metadata_qh.setDbPathOrUrl("http://10.201.21.75:9999/blazegraph/")
+
+masha = BasicMashup()
+masha.metadataQuery = [metadata_qh]
+
+result_1 = masha.getAllCulturalHeritageObjects
 
 # Finally, create a advanced mashup object for asking about dataclear
 mashup = AdvancedMashup()
 mashup.addProcessHandler(process_qh)
-mashup.addProcessHandler(process_qh)
-mashup.addMetadataHandler(metadata_qh)
 mashup.addMetadataHandler(metadata_qh)
 
-result_q1 = mashup.getEntityById("22")
-print(result_q1.__dict__["authors"][0].__dict__)
-print(f"method getEntityById, wrong input: {result_q1}\n")
-result_q2 = mashup.getEntityById("33")
-print(f"method getEntityById Object: {result_q2}\n")
-result_q3 = mashup.getEntityById("VIAF:100190422")
-print(f"method getEntityById author: {result_q3}\n")
-
-result_q4 = mashup.getAllPeople()
-print(f"method getAllPeople:{result_q4}\n")
-
-result_q5 = mashup.getAllCulturalHeritageObjects()
-print(f"method getAllCulturalHeritageObjets: {result_q5}\n")
-result_q6 = mashup.getAuthorsOfCulturalHeritageObject("17")
-print(f"method getAuthorsOfCulturalHeritageObject: {result_q6}")
-result_q7 = mashup.getAuthorsOfCulturalHeritageObject("45")
-print(f"method getAuthorsOfCulturalHeritageObject wrong input: {result_q7}\n")
-
-result_q8 = mashup.getCulturalHeritageObjectsAuthoredBy("VIAF:100203985")
-print(f"method getCulturalHeritageObjectsAuthoredBy: {result_q8}\n")
-result_q9 = mashup.getCulturalHeritageObjectsAuthoredBy("VIAF:1")
-print(f"method getCulturalHeritageObjectsAuthoredBy wrong input: {result_q9}\n")
-
-result_q10 = mashup.getAllActivities()
-print(f"method getAllActivities: {result_q10}\n")
-
-result_q11 = mashup.getActivitiesByResponsibleInstitution("Heritage")
-print(f"method getActivitiesByResponsibleInstitution: {result_q11}\n")
-result_q12 = mashup.getActivitiesByResponsibleInstitution("Lidl")
-print(f"method getActivitiesByResponsibleInstitution, wrong input: {result_q12} \n")
-
-result_q12 = mashup.getActivitiesByResponsiblePerson("Hopper")
-print(f"method getActivitiesByResponsiblePerson: {result_q12}\n")
-result_q13 = mashup.getActivitiesByResponsiblePerson("Hitler")
-print(f"method getActivitiesByResponsiblePerson, wrong input:{result_q13}\n")
-
-result_q14 = mashup.getActivitiesUsingTool("Nikon")
-print(f"method getActivitiesUsingTool: {result_q14}\n")
-result_q15 = mashup.getActivitiesUsingTool("Zappa")
-print(f"method getActivitiesUsingTool, wrong input: {result_q15}\n")
-
-result_q16 = mashup.getActivitiesStartedAfter("2023-08-21")
-print(f"method getActivitiesStartedAfter: {result_q16}\n")
-result_q17 = mashup.getActivitiesStartedAfter("2028-01-01")
-print(f"method getActivitiesStartedAfter, wrong input: {result_q17}\n")
-
-result_q18 = mashup.getActivitiesEndedBefore("2023-06-10")
-print(f"method getActivitiesEndedBefore: {result_q18}\n")
-result_q19 = mashup.getActivitiesEndedBefore("2028-01-01")
-print(f"method getActivitiesEndedBefore, wrong input: {result_q19}\n")
-
-result_q20 = mashup.getAcquisitionsByTechnique("Photogrammetry")
-print(f"method getAcquisitionsByTechnique: {result_q20}\n")
-result_q21 = mashup.getAcquisitionsByTechnique("Zappa")
-print(f"method getAcquisitionsByTechnique, wrong input: {result_q21}\n")
-
-print("--- AdMash ---\n")
-
-result_q22 = mashup.getActivitiesOnObjectsAuthoredBy("VIAF:100190422")
-print(f"method getActivitiesOnObjectsAuthoredBy: {result_q22}\n")
-result_q23 = mashup.getActivitiesOnObjectsAuthoredBy("VIAF:1")
-print(f"method getActivitiesOnObjectsAuthoredBy, wrong input: {result_q23}\n")
-
-result_q24 = mashup.getObjectsHandledByResponsiblePerson("Jane")
-print(f"method getObjectsHandledByResponsiblePerson: {result_q24}\n")
-result_q25 = mashup.getObjectsHandledByResponsiblePerson("Chicoria")
-print(f"method getObjectsHandledByResponsiblePerson, wrong input: {result_q25}\n")
-
-result_q26 = mashup.getObjectsHandledByResponsibleInstitution("Heritage")
-print(f"method getObjectsHandledByResponsibleInstitution: {result_q26}\n")
-result_q27 = mashup.getObjectsHandledByResponsibleInstitution("Lidl")
-print(f"method getObjectsHandledByResponsibleInstitution, wrong input: {result_q27}\n")
-
-result_q28 = mashup.getAuthorsOfObjectsAcquiredInTimeFrame("2023-03-10", "2023-11-10")
-print(f"method getAuthorsOfObjectsAcquiredInTimeFrame: {result_q28}\n")
-result_q29 = mashup.getAuthorsOfObjectsAcquiredInTimeFrame("2028-01-01", "2029-01-01")
-print(f"method getAuthorsOfObjectsAcquiredInTimeFrame, wrong input: {result_q29}\n")
-
-'''
