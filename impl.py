@@ -13,7 +13,7 @@ from sqlite3 import connect
 from pprint import pp
 from os import sep
 process = "data" + sep + "process.json"
- 
+
 
 class IdentifiableEntity(object): 
     def __init__(self, id: str):
@@ -45,7 +45,7 @@ class CulturalHeritageObject(IdentifiableEntity):
     def getTitle(self) ->str:
         return self.title
 
-     
+
     def getDate(self) -> Optional[str]:
         return self.date
 
@@ -96,40 +96,54 @@ class Map(CulturalHeritageObject):
 
 
 class Activity(object):                               
-    def __init__(self, institute: str, person: str, tool: set[str], start: str, end: str, refersTo_cho:CulturalHeritageObject):
+    def __init__(self, refersTo_cho: CulturalHeritageObject, institute: str, person: str|None=None, start: str|None=None, end: str|None=None, tool: str|list[str]|None=None):
+        self.refersTo_cho = refersTo_cho
         self.institute = institute
-        self.person = person
-        self.tool = tool         
+        self.person = person     
         self.start = start
         self.end = end
-        self.refersTo_cho = refersTo_cho
+
+        self.tool = []
+
+        if type(tool) == str:
+            self.tool.append(tool)
+        elif type(tool) == list:
+            self.tool = tool
         
-    def getResponsibleInstitute(self) -> str:
+    def getResponsibleInstitute(self):
         return self.institute
     
-    def getResponsiblePerson(self) -> Optional[str]:
-        return self.person ########################################## deve restituire None if string is empty (vale anche per i metodi successivi)
+    def getResponsiblePerson(self):
+        if self.person:
+            return self.person 
+        return None
     
-    def getTools(self) -> set: # getTool has arity zero or more [0..*]
+    def getTools(self): 
         return self.tool
     
-    def getStartDate(self) -> Optional[str]:
-        return self.start
+    def getStartDate(self):
+        if self.star:
+            return self.start
+        return None
 
-    def getEndDate(self) -> Optional[str]:
-        return self.end
-    
-    def refersTo(self) -> CulturalHeritageObject:
+    def getEndDate(self):
+        if self.star:
+            return self.end
+        return None
+        
+    def refersTo(self):
         return self.refersTo_cho
- 
+
 #Subclass of Activity just with technique parameter
- 
+
 class Acquisition(Activity):
-    def __init__(self, institute: str, person: str,tool: set[str], start: str, end: str, refersTo_cho: CulturalHeritageObject, technique: str):
+    def __init__(self, refersTo_cho: CulturalHeritageObject, institute: str, technique: str, person: str|None=None, start: str|None=None, end: str|None=None, tool: str|list[str]|None=None):
+
         super().__init__(institute, person, tool, start, end, refersTo_cho)
+
         self.technique = technique
     
-    def getTechnique(self) -> str:
+    def getTechnique(self):
         return self.technique
 
 class Processing(Activity):
@@ -143,7 +157,7 @@ class Optimising(Activity):
 
 class Exporting(Activity):
     pass
- 
+
 
 class Handler(object):  # chiara
     def __init__(self):
