@@ -596,217 +596,113 @@ class ProcessDataQueryHandler(QueryHandler):
         super().__init__()
 
     def getAllActivities(self):
-        try:
-            # Modify the partialName parameter to include "wildcard characters" for partial matching
-            # nell'input se inserisco anche solo un risultato parziale mi compare comunque
-            with connect(self.getDbPathOrUrl()) as con: # metodo ereditato dal query handler, posso connettere al path del relational database graze al getDbPathOrUrl 
-                # with / as = construction from panda
-               # adds every colums from every table 
-                query = """
-                    SELECT InternalId, "responsible institute", "responsible person", tool, "start date", "end date", objectId, technique
-                    FROM acquisition
-                    UNION 
-                    SELECT InternalId, "responsible institute", "responsible person", tool, "start date", "end date", objectId, NULL AS technique
-                    FROM processing
-                    UNION
-                    SELECT InternalId, "responsible institute", "responsible person", tool, "start date", "end date", objectId, NULL AS technique
-                    FROM modelling
-                    UNION
-                    SELECT InternalId, "responsible institute", "responsible person", tool, "start date", "end date", objectId, NULL AS technique
-                    FROM optimising
-                    UNION
-                    SELECT InternalId, "responsible institute", "responsible person", tool, "start date", "end date", objectId, NULL AS technique
-                    FROM exporting
-                """
-                # pd = panda
-                # pd.read_sql(query, con) executes the SQL query against the database using the connection con and returns the result as a pandas DataFrame (result of a query)
-                result = pd.read_sql(query, con)
-                return result
-        except Exception as e:
-            print(f"An error occurred: {e}")
-
-    def getActivitiesByResponsibleInstitution(self, partialName: str): 
-        # questo è un metodo
-        #partialName lo da peroni come parametro?, è la stringa di input
-        try:
-            # Modify the partialName parameter to include "wildcard characters" for partial matching
-            # nell'input se inserisco anche solo un risultato parziale mi compare comunque
-
-            partial_name = f"%{partialName}%"
-            # allow me to do the partial match
-            
-            # Connect to the database #modific con la parte di catalina
-            with connect(self.getDbPathOrUrl()) as con:
-                # Define the SQL query with placeholders for parameters, quindi seleziono tutte le colonne
-                # con il FROM indico da che ? .... tabella
-                # con il where da che colonna
-                query2 = """
-                SELECT InternalId, "responsible institute", "responsible person", tool, "start date", "end date", objectId, technique
-                FROM acquisition
-                WHERE "responsible institute" LIKE ?
-                UNION
-                SELECT InternalId, "responsible institute", "responsible person", tool, "start date", "end date", objectId, NULL AS technique
-                FROM processing
-                WHERE "responsible institute" LIKE ?
-                UNION
-                SELECT InternalId, "responsible institute", "responsible person", tool, "start date", "end date", objectId, NULL AS technique
-                FROM modelling
-                WHERE "responsible institute" LIKE ?
-                UNION
-                SELECT InternalId, "responsible institute", "responsible person", tool, "start date", "end date", objectId, NULL AS technique
-                FROM optimising
-                WHERE "responsible institute" LIKE ?
-                UNION
-                SELECT InternalId, "responsible institute", "responsible person", tool, "start date", "end date", objectId, NULL AS technique
-                FROM exporting
-                WHERE "responsible institute" LIKE ?
-                """
-                # Execute the query with the provided parameters
-                # ? = filtration according to the input, non ce l'ho in getallactivities perchè mi riporta tutte le attività
-                # qui ce l'ho perchè voglio info solo da un tipo di colonna specifica del db che è responsible institute
-                query2_table = pd.read_sql(query2, con, params=[partial_name]*5)
-                # The params argument is a list of parameters to be used in the SQL query. Since there are 5 ? placeholders in the query (one for each UNION segment), the list [partial_name]*5 is used to provide the same partial_name parameter for each placeholder.
-                return query2_table
-            #  The result of the query is returned as a pandas DataFrame and assigned to the variable query2_table.
-        except Exception as e:
-            print("An error occurred:", e)
-            return None
-
+        with connect(self.getDbPathOrUrl()) as con:
+            tables = ["Acquisition", "Processing", "Modelling", "Optimising", "Exporting"]
+            union_list = [
+                pd.read_sql(f"SELECT * FROM {table}", con)
+                for table in tables
+            ]
+            df_union = pd.concat(union_list, ignore_index=True)
+            return df_union.fillna("")
+    
+    def getActivitiesByResponsibleInstitution(self, partialName: str):
+        with connect(self.getDbPathOrUrl()) as con:
+            tables = ["Acquisition", "Processing", "Modelling", "Optimising", "Exporting"]
+            union_list = [
+                pd.read_sql(
+                    f'SELECT * FROM {table} WHERE "responsible institute" LIKE ?',
+                    con,
+                    params=(f"%{partialName}%",)
+                )
+                for table in tables
+            ]
+            df_union = pd.concat(union_list, ignore_index=True)
+            return df_union.fillna("")
+    
     def getActivitiesByResponsiblePerson(self, partialName: str):
-            try:
-                partial_name = f"%{partialName}%"
-                with connect(self.getDbPathOrUrl()) as con:
-                    query3 = """
-                    SELECT internalId, "responsible institute", "responsible person", tool, "start date", "end date", objectId, technique
-                    FROM acquisition
-                    WHERE "responsible person" LIKE ?
-                    UNION
-                    SELECT internalId, "responsible institute", "responsible person", tool, "start date", "end date", objectId, NULL AS technique
-                    FROM processing
-                    WHERE "responsible person" LIKE ?
-                    UNION
-                    SELECT internalId, "responsible institute", "responsible person", tool, "start date", "end date", objectId, NULL AS technique
-                    FROM modelling
-                    WHERE "responsible person" LIKE ?
-                    UNION
-                    SELECT internalId, "responsible institute", "responsible person", tool, "start date", "end date", objectId, NULL AS technique
-                    FROM optimising
-                    WHERE "responsible person" LIKE ?
-                    UNION
-                    SELECT internalId, "responsible institute", "responsible person", tool, "start date", "end date", objectId, NULL AS technique
-                    FROM exporting
-                    WHERE "responsible person" LIKE ?
-                    """
-                    query3_table = pd.read_sql(query3, con, params= [partial_name]*5)
-                    return query3_table
-            except Exception as e:
-                print("An error occurred:", e)
+        with connect(self.getDbPathOrUrl()) as con:
+            tables = ["Acquisition", "Processing", "Modelling", "Optimising", "Exporting"]
+            union_list = [
+                pd.read_sql(
+                    f'SELECT * FROM {table} WHERE "responsible person" LIKE ?',
+                    con,
+                    params=(f"%{partialName}%",)
+                )
+                for table in tables
+            ]
+            df_union = pd.concat(union_list, ignore_index=True)
+            return df_union.fillna("")
+
                 
     def getActivitiesUsingTool(self, partialName: str):
-            try:
-                partial_name= f"%{partialName}%"
-                with connect(self.getDbPathOrUrl()) as con:
-                    query4 = """
-                    SELECT internalId, "responsible institute", "responsible person", tool, "start date", "end date", objectId, technique
-                    FROM acquisition
-                    WHERE tool LIKE ?
-                    UNION
-                    SELECT internalId, "responsible institute", "responsible person", tool, "start date", "end date", objectId, NULL AS technique
-                    FROM processing
-                    WHERE tool LIKE ?
-                    UNION
-                    SELECT internalId, "responsible institute", "responsible person", tool, "start date", "end date", objectId, NULL AS technique
-                    FROM modelling
-                    WHERE tool LIKE ?
-                    UNION
-                    SELECT internalId, "responsible institute", "responsible person", tool, "start date", "end date", objectId, NULL AS technique
-                    FROM optimising
-                    WHERE tool LIKE ?
-                    UNION
-                    SELECT internalId, "responsible institute", "responsible person", tool, "start date", "end date", objectId, NULL AS technique
-                    FROM exporting
-                    WHERE tool LIKE ?
-                    """
-                    query4_table = pd.read_sql(query4, con, params=[partial_name]*5)
-                    return query4_table
-            except Exception as e:
-                print("An error occurred:", e)
-                
-    def getActivitiesStartedAfter (self, date: str):
-            try:
-                date=f"%{date}%"
-                with connect(self.getDbPathOrUrl()) as con:
-                    query5 = """
-                    SELECT internalId, "responsible institute", "responsible person", tool, "start date", "end date", objectId, technique
-                    FROM acquisition
-                    WHERE "start date" LIKE ?
-                    UNION
-                    -- con l'union faccio 1 +1 con
-                    SELECT internalId, "responsible institute", "responsible person", tool, "start date", "end date", objectId, NULL AS technique
-                    FROM processing
-                    WHERE "start date" LIKE ?
-                    UNION
-                    SELECT internalId, "responsible institute", "responsible person", tool, "start date", "end date", objectId, NULL AS technique
-                    FROM modelling
-                    WHERE "start date" LIKE ?
-                    UNION
-                    SELECT internalId, "responsible institute", "responsible person", tool, "start date", "end date", objectId, NULL AS technique
-                    FROM optimising
-                    WHERE "start date" LIKE ?
-                    UNION
-                    SELECT internalId, "responsible institute", "responsible person", tool, "start date", "end date", objectId, NULL AS technique
-                    FROM exporting
-                    WHERE "start date" LIKE ?
-                    """
-                    query5_table = pd.read_sql(query5, con, params=[date]*5)
-                    return query5_table
-            except Exception as e:
-                print ("An error occured:", e)
-
+        with connect(self.getDbPathOrUrl()) as con:
+            tables = ["Acquisition", "Processing", "Modelling", "Optimising", "Exporting"]
+            union_list = [
+                pd.read_sql(
+                    f'SELECT * FROM {table} WHERE "tool" LIKE ?',
+                    con,
+                    params=(f"%{partialName}%",)
+                )
+                for table in tables
+            ]
+            df_union = pd.concat(union_list, ignore_index=True)
+            return df_union.fillna("")
+    
+    def getActivitiesStartedAfter(self, date: str):
+        with connect(self.getDbPathOrUrl()) as con:
+            tables = ["Acquisition", "Processing", "Modelling", "Optimising", "Exporting"]
+            union_list = [
+                pd.read_sql(f'SELECT * FROM {table} WHERE "start date" >= ?', con, params=(date,))
+                for table in tables
+            ]
+            df_union = pd.concat(union_list, ignore_index=True)
+            return df_union.fillna("")
+        
     def getActivitiesEndedBefore(self, date: str):
-            try:
-                date=f"%{date}%"
-                with connect (self.getDbPathOrUrl()) as con:
-                    query6 = """
-                    SELECT internalId, "responsible institute", "responsible person", tool, "start date", "end date", objectId, technique
-                    FROM acquisition
-                    WHERE "end date" LIKE ?
-                    UNION  
-                    SELECT internalId, "responsible institute", "responsible person", tool, "start date", "end date", objectId, NULL AS technique
-                    FROM processing
-                    WHERE "end date" LIKE ?
-                    UNION
-                    SELECT internalId, "responsible institute", "responsible person", tool, "start date", "end date", objectId, NULL AS technique
-                    FROM modelling
-                    WHERE "end date" LIKE ?
-                    UNION
-                    SELECT internalId, "responsible institute", "responsible person", tool, "start date", "end date", objectId, NULL AS technique
-                    FROM optimising
-                    WHERE "end date" LIKE ?
-                    UNION
-                    SELECT internalId, "responsible institute", "responsible person", tool, "start date", "end date", objectId, NULL AS technique
-                    FROM exporting
-                    WHERE "end date" LIKE ?
-                    """
-                    query6_table = pd.read_sql(query6, con, params=[date]*5)
-                    return query6_table
-            except Exception as e:
-                print ("An error occured:", e) 
+        with connect(self.getDbPathOrUrl()) as con:
+            tables = ["Acquisition", "Processing", "Modelling", "Optimising", "Exporting"]
+            union_list = [
+                pd.read_sql(
+                    f'SELECT * FROM {table} WHERE "end date" <= ? AND NOT "end date" = ""',
+                    con,
+                    params=(date,)
+                )
+                for table in tables
+            ]
+            df_union = pd.concat(union_list, ignore_index=True)
+            return df_union
 
     def getAcquisitionsByTechnique(self, partialName: str):
-        try:
-            partial_name = f"%{partialName}%"
-            
-            with connect(self.getDbPathOrUrl()) as con:
-                query = "SELECT * FROM acquisition WHERE technique LIKE ?"
-                query_table = pd.read_sql(query, con, params=[partial_name])
-                return query_table
-        except Exception as e:
-            print("An error occurred:", e)
-            return None #deve sempre restituire df, eventualmente vuoto (anche per metodi precedenti)
+        with connect(self.getDbPathOrUrl()) as con:
+            tables = ["Acquisition", "Processing", "Modelling", "Optimising", "Exporting"]
+            union_list = [
+                pd.read_sql(
+                    f'SELECT * FROM {table} WHERE "technique" LIKE ?',
+                    con,
+                    params=(f"%{partialName}%",)
+                )
+                for table in tables
+            ]
+            df_union = pd.concat(union_list, ignore_index=True)
+            return df_union.fillna("")
 
+'''
+# Instantiate the query handler
 process_query = ProcessDataQueryHandler()
+
+# Set the database path or URL
 process_query.setDbPathOrUrl("relational.db")
+
+# Call the method and store the result
+getAcquisitionsByTechnique = process_query.getAcquisitionsByTechnique("Photogrammetry")
+
+pd.set_option('display.max_rows', None)  # Show all rows
+pd.set_option('display.max_columns', None)  # Show all columns
+# Print the result
+print("Result from getActivitiesStartedAfter:")
+print(getAcquisitionsByTechnique)
+
+'''
 
 #BasicMashup
 
