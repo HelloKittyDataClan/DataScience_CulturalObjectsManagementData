@@ -1358,7 +1358,7 @@ class BasicMashup(object):
         return activities
 
 
-'''class AdvancedMashup(BasicMashup):
+class AdvancedMashup(BasicMashup):
     def __init__(self):
         super().__init__()
 
@@ -1438,102 +1438,8 @@ class BasicMashup(object):
                 unique_ids.add(author.id)
                 result_list.append(author)
         
-        return result_list'''
-
-
-
-
-class AdvancedMashup(BasicMashup):
-    def __init__(self):
-        super().__init__()
-
-    def getObjectsHandledByResponsiblePerson(self, partName: str) -> list[CulturalHeritageObject]: #ok
-        if not self.processQuery:
-            raise ValueError("No process query handlers set.")
-
-        activities = self.getActivitiesByResponsiblePerson(partName)
-        if not activities:
-            print(f"No activities found for person: {partName}")
-            return []
-
-        objects = {activity.refersTo() for activity in activities if activity.refersTo()}
-        return list(objects)
-    
-
-    def getObjectsHandledByResponsibleInstitution(self, partName: str) -> list[CulturalHeritageObject]:
-        if not self.processQuery: #ok
-            raise ValueError("No process query handlers set.")
-
-        activities = self.getActivitiesByResponsibleInstitution(partName)
-        if not activities:
-            print(f"No activities found for institution: {partName}")
-            return []
-
-        objects = {activity.refersTo() for activity in activities if activity.refersTo()}
-        return list(objects)
-
-
-    def getActivitiesOnObjectsAuthoredBy(self, personId: str) -> list[Activity]:  # cata
-        # Step 1: Get the cultural heritage objects authored by the given person
-        list_of_objects = self.getCulturalHeritageObjectsAuthoredBy(personId)
-        
-        # Debugging: Check if no objects were found
-        if not list_of_objects:
-            print(f"No cultural heritage objects found for person: {personId}")
-            return []
-
-        # Step 2: Get all activities
-        all_activities = self.getAllActivities()
-
-        # Debugging: Check if no activities were found
-        if not all_activities:
-            print("No activities found.")
-            return []
-
-        # Step 3: Create a set of object IDs for faster lookup
-        object_ids = {obj.id for obj in list_of_objects}
-
-        # Step 4: Filter activities where the referred object is in the object_ids set
-        activities = [activity for activity in all_activities if activity.refersTo().id in object_ids]
-
-        # Debugging: Log the number of activities found
-        if not activities:
-            print(f"No activities found for objects authored by person: {personId}")
-        else:
-            print(f"Found {len(activities)} activities for objects authored by person: {personId}")
-
-        return activities
-
-
-    def getAuthorsOfObjectsAcquiredInTimeFrame(self, start: str, end: str) -> list[Person]:  
-        activities_after = self.getActivitiesStartedAfter(start)
-        filtered_activities_after = [activity for activity in activities_after if isinstance(activity, Acquisition)]
-
-        ids_of_filtered_objects = set()
-        for act in filtered_activities_after:
-            date = datetime.strptime(act.end, '%Y-%m-%d')
-            if date <= datetime.strptime(end, '%Y-%m-%d'):
-                ids_of_filtered_objects.add(act.refersTo().id)
-
-        result_list = []
-        all_authors = []
-
-        for id in ids_of_filtered_objects:
-            authors = self.getAuthorsOfCulturalHeritageObject(id)
-            if authors:
-                all_authors.extend(authors)
-
-        unique_ids = set()
-        # Iterate over the list in reverse order
-        for i in range(len(all_authors) - 1, -1, -1):
-            author = all_authors[i]
-            if author.id in unique_ids:
-                del all_authors[i]  # Remove duplicate author
-            else:
-                unique_ids.add(author.id)
-                result_list.append(author)
-
         return result_list
+
 
 
 
@@ -1586,7 +1492,7 @@ pp(result)
 '''
 
 
-
+'''
 #TEST FINALI DI VALENTINO
 
 rel_path = "relational.db"
@@ -1621,7 +1527,7 @@ result_q6 = mashup.getActivitiesOnObjectsAuthoredBy("ULAN:500114874")
 
 result_q7 = mashup.getObjectsHandledByResponsiblePerson("Alice Liddell")
 
-
+'''
 # Calling the method 1
 '''all_activities = mashup.getAllActivities()
 for i in all_activities:
