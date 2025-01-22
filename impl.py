@@ -21,13 +21,13 @@ class IdentifiableEntity(object):
     def __init__(self, id: str):
         self.id = id 
 
-    def get_id(self):
+    def getId(self):
         return self.id
 
 class Person(IdentifiableEntity):
     def __init__(self, id: str, name: str):
-        self.name = name
         super().__init__(id)
+        self.name = name
     
     def getName(self):
         return self.name
@@ -47,10 +47,8 @@ class CulturalHeritageObject(IdentifiableEntity):
     def getTitle(self) ->str:
         return self.title
 
-
     def getDate(self) -> Optional[str]:
         return self.date
-
         
     def getOwner(self) -> str:
         return self.owner
@@ -98,13 +96,12 @@ class Map(CulturalHeritageObject):
 
 
 class Activity(object):                               
-    def __init__(self, refersTo_cho: CulturalHeritageObject, institute: str, person: str|None=None, start: str|None=None, end: str|None=None, tool: str|list[str]|None=None):
+    def __init__(self, refersTo_cho: CulturalHeritageObject, institute: str, person: str, start: str, end: str, tool: str|list[str]):
         self.refersTo_cho = refersTo_cho
         self.institute = institute
         self.person = person     
         self.start = start
         self.end = end
-
         self.tool = []
 
         if type(tool) == str:
@@ -112,10 +109,10 @@ class Activity(object):
         elif type(tool) == list:
             self.tool = tool
     
-    def __str__(self):
+    '''def __str__(self):
         tools_str = ", ".join(self.tool)
         return (f"Activity: {self.__class__.__name__}, Institute: {self.institute}, "
-                f"Person: {self.person}, Start: {self.start}, End: {self.end}, Tool: {tools_str}")
+                f"Person: {self.person}, Start: {self.start}, End: {self.end}, Tool: {tools_str}")'''
 
     def getResponsibleInstitute(self):
         return self.institute
@@ -144,36 +141,34 @@ class Activity(object):
 #Subclass of Activity just with technique parameter
 
 class Acquisition(Activity):
-    def __init__(self, refersTo_cho: CulturalHeritageObject, institute: str, technique: str, person: str | None = None, start: str | None = None, end: str | None = None, tool: str | list[str] | None = None):
+    def __init__(self, refersTo_cho: CulturalHeritageObject, institute: str, technique: str, person: str, start: str, end: str, tool: str|list[str]):
         # Make sure to match the constructor of the base Activity class
         super().__init__(refersTo_cho, institute, person, start, end, tool)  # Pass in the correct parameters
         
         self.technique = technique  # 'technique' is specific to 'Acquisition'
 
-    def __str__(self):
+    '''def __str__(self):
         # Extend the base class string representation
-        return f"{super().__str__()}, Technique: {self.technique}"
+        return f"{super().__str__()}, Technique: {self.technique}"'''
 
     def getTechnique(self):
         return self.technique
     
 
 class Processing(Activity):
-    def __str__(self):
-        return super().__str__()
+    '''def __str__(self):
+        return super().__str__()'''
+    pass
 
 
 class Modelling(Activity):
-    def __str__(self):
-        return super().__str__()
+    pass
 
 class Optimising(Activity):
-    def __str__(self):
-        return super().__str__()
+    pass
 
 class Exporting(Activity):
-    def __str__(self):
-        return super().__str__()
+    pass
 
 
 class Handler(object):  # chiara
@@ -191,7 +186,7 @@ class UploadHandler(Handler):
     def __init__(self):
         super().__init__()
 
-    def pushDataToDb(self, path):
+    def pushDataToDb(self):
         pass
 
 
