@@ -36,19 +36,26 @@ class Person(IdentifiableEntity):
 #___________________________CSV_________________________
 
 class CulturalHeritageObject(IdentifiableEntity):
-    def __init__(self, id: str, title: str, owner: str, place: str, hasAuthor: list[Person], date:str = None):
+    def __init__(self, id: str, title: str, owner: str, place: str, date:str = None, authors: Person|list[Person]|None=None):
+        super().__init__(id)
         self.title = title
-        self.date = date
         self.owner = owner
         self.place = place
-        self.hasAuthor = hasAuthor 
-        super().__init__(id)
+        self.date = date
+        self.authors = list() #should return a list? 
 
-    def getTitle(self) ->str:
+        if type(authors) == Person:
+            self.authors.append(Person)
+        elif type(authors) == list:
+            self.authors = authors
+
+    def getTitle(self) -> str:
         return self.title
 
     def getDate(self) -> Optional[str]:
-        return self.date
+        if self.date:
+            return self.date
+        return None
         
     def getOwner(self) -> str:
         return self.owner
@@ -56,8 +63,8 @@ class CulturalHeritageObject(IdentifiableEntity):
     def getPlace(self) -> str:
         return self.place
 
-    def getAuthors(self) -> list[Person]:
-        return self.hasAuthor
+    def hasAuthors(self) -> list[Person]:
+        return self.authors
     
 
 class NauticalChart(CulturalHeritageObject):
@@ -96,8 +103,8 @@ class Map(CulturalHeritageObject):
 
 
 class Activity(object):                               
-    def __init__(self, refersTo_cho: CulturalHeritageObject, institute: str, person: str, start: str, end: str, tool: str|list[str]):
-        self.refersTo_cho = refersTo_cho
+    def __init__(self, object: CulturalHeritageObject, institute: str, person: str, start: str, end: str, tool: str|list[str]):
+        self.object = object
         self.institute = institute
         self.person = person     
         self.start = start
@@ -126,24 +133,24 @@ class Activity(object):
         return self.tool
     
     def getStartDate(self):
-        if self.star:
+        if self.start:
             return self.start
         return None
 
     def getEndDate(self):
-        if self.star:
+        if self.start:
             return self.end
         return None
         
     def refersTo(self):
-        return self.refersTo_cho
+        return self.object
 
 #Subclass of Activity just with technique parameter
 
 class Acquisition(Activity):
-    def __init__(self, refersTo_cho: CulturalHeritageObject, institute: str, technique: str, person: str, start: str, end: str, tool: str|list[str]):
+    def __init__(self, object: CulturalHeritageObject, institute: str, technique: str, person: str, start: str, end: str, tool: str|list[str]):
         # Make sure to match the constructor of the base Activity class
-        super().__init__(refersTo_cho, institute, person, start, end, tool)  # Pass in the correct parameters
+        super().__init__(object, institute, person, start, end, tool)  # Pass in the correct parameters
         
         self.technique = technique  # 'technique' is specific to 'Acquisition'
 
@@ -170,6 +177,8 @@ class Optimising(Activity):
 class Exporting(Activity):
     pass
 
+#_______________HANDLERS_____________________
+
 
 class Handler(object):  # chiara
     def __init__(self):
@@ -188,7 +197,6 @@ class UploadHandler(Handler):
 
     def pushDataToDb(self):
         pass
-
 
 class MetadataUploadHandler(UploadHandler):  # chiara
     def __init__(self):  
@@ -560,7 +568,7 @@ class MetadataQueryHandler(QueryHandler):
         return results
     
     
-    def getCulturalHeritageObjectsAuthoredBy(self, personid: str) -> pd.DataFrame:          #bea
+    def getCulturalHeritageObjectsAuthoredBy(self, personId: str) -> pd.DataFrame:          #bea
         query = f"""    
         PREFIX schema: <http://schema.org/>
         PREFIX base_url: <http://github.com/HelloKittyDataClan/DSexam/>
@@ -578,7 +586,7 @@ class MetadataQueryHandler(QueryHandler):
 
             ?author foaf:name ?authorName ;
                     schema:identifier ?authorID ;
-                    schema:identifier "{personid}" .
+                    schema:identifier "{personId}" .
 
             OPTIONAL {{ ?object schema:dateCreated ?date }}
 
@@ -727,14 +735,14 @@ class BasicMashup(object):
         return True
 
     def cleanProcessHandlers(self) -> bool:      #cata
-        self.processQuery.clear()  #clear the process handlers list
+        self.processQuery = [] 
         return True
 
     def addMetadataHandler(self, handler: MetadataQueryHandler) -> bool:     #bea
         self.metadataQuery.append(handler)
         return True
 
-    def addProcessHandler(self, handler:'ProcessDataQueryHandler') -> bool:   #elena
+    def addProcessHandler(self, handler:ProcessDataQueryHandler) -> bool:   #elena
         if not isinstance(handler, ProcessDataQueryHandler):
         # check if handler is an istance of processdataqueryhandler (prevention)
             return False
@@ -742,7 +750,7 @@ class BasicMashup(object):
             self.processQuery.append(handler)  # Adds a process handler to the list
             return True
         
-    def getEntityById(self, id: str):   #bea
+    def getEntityById(self, id: str) -> IdentifiableEntity | None: #bea
         if not self.metadataQuery:
             return None
 
@@ -756,7 +764,7 @@ class BasicMashup(object):
 
             if not id.isdigit():
                 person_uri = id
-                result = Person(person_uri, row["author_name"])
+                result = Person(person_uri, row["author_name"]) #si chiama cosi quella row?
                 return result
 
             # Assicurati che authors sia una lista
@@ -768,7 +776,7 @@ class BasicMashup(object):
             if row["type"] == base_url + "NauticalChart":
                 new_object = NauticalChart(
                     row["title"], row["owner"], row["place"], authors, row["date"], id
-                )
+                ) #non si chiama hasAuthors?
             elif row["type"] == base_url + "ManuscriptPlate":
                 new_object = ManuscriptPlate(
                     row["title"], row["owner"], row["place"], authors, row["date"], id
@@ -858,7 +866,7 @@ class BasicMashup(object):
                     date=date,
                     owner=owner,
                     place=place,
-                    hasAuthor=authors,
+                    authors=authors,
                 )
 
                 # Aggiungi l'oggetto alla lista, evitando duplicati
@@ -884,14 +892,14 @@ class BasicMashup(object):
         return result
     
 
-    def getCulturalHeritageObjectsAuthoredBy(self, personid: str) -> List[CulturalHeritageObject]:      #bea
+    def getCulturalHeritageObjectsAuthoredBy(self, personId: str) -> List[CulturalHeritageObject]:      #bea
         if not self.metadataQuery:
             raise ValueError("No metadata query handlers set.")
     
         object_list = []
     
         for handler in self.metadataQuery:
-            objects_df = handler.getCulturalHeritageObjectsAuthoredBy(personid)
+            objects_df = handler.getCulturalHeritageObjectsAuthoredBy(personId)
         
             for _, row in objects_df.iterrows():
                 id = str(row['id'])  # Ensure ID is a string
@@ -910,27 +918,27 @@ class BasicMashup(object):
             
         
                 if obj_type == 'NauticalChart':
-                    cultural_obj = NauticalChart(id=id, title=title, owner=owner, place=place, date=date, hasAuthor=[author])
+                    cultural_obj = NauticalChart(id=id, title=title, owner=owner, place=place, date=date, authors=[author])
                 elif obj_type == 'ManuscriptPlate':
-                    cultural_obj = ManuscriptPlate(id=id, title=title, owner=owner, place=place, date=date, hasAuthor=[author])
+                    cultural_obj = ManuscriptPlate(id=id, title=title, owner=owner, place=place, date=date, authors=[author])
                 elif obj_type == 'ManuscriptVolume':
-                    cultural_obj = ManuscriptVolume(id=id, title=title, owner=owner, place=place, date=date, hasAuthor=[author])
+                    cultural_obj = ManuscriptVolume(id=id, title=title, owner=owner, place=place, date=date, authors=[author])
                 elif obj_type == 'PrintedVolume':
-                    cultural_obj = PrintedVolume(id=id, title=title, owner=owner, place=place, date=date, hasAuthor=[author])
+                    cultural_obj = PrintedVolume(id=id, title=title, owner=owner, place=place, date=date, authors=[author])
                 elif obj_type == 'PrintedMaterial':
-                    cultural_obj = PrintedMaterial(id=id, title=title, owner=owner, place=place, date=date, hasAuthor=[author])
+                    cultural_obj = PrintedMaterial(id=id, title=title, owner=owner, place=place, date=date, authors=[author])
                 elif obj_type == 'Herbarium':
-                    cultural_obj = Herbarium(id=id, title=title, owner=owner, place=place, date=date, hasAuthor=[author])
+                    cultural_obj = Herbarium(id=id, title=title, owner=owner, place=place, date=date, authors=[author])
                 elif obj_type == 'Specimen':
-                    cultural_obj = Specimen(id=id, title=title, owner=owner, place=place, date=date, hasAuthor=[author])
+                    cultural_obj = Specimen(id=id, title=title, owner=owner, place=place, date=date, authors=[author])
                 elif obj_type == 'Painting':
-                    cultural_obj = Painting(id=id, title=title, owner=owner, place=place, date=date, hasAuthor=[author])
+                    cultural_obj = Painting(id=id, title=title, owner=owner, place=place, date=date, authors=[author])
                 elif obj_type == 'Model':
-                    cultural_obj = Model(id=id, title=title, owner=owner, place=place, date=date, hasAuthor=[author])
+                    cultural_obj = Model(id=id, title=title, owner=owner, place=place, date=date, authors=[author])
                 elif obj_type == 'Map':
-                    cultural_obj = Map(id=id, title=title, owner=owner, place=place, date=date, hasAuthor=[author])
+                    cultural_obj = Map(id=id, title=title, owner=owner, place=place, date=date, authors=[author])
                 else:
-                    cultural_obj = CulturalHeritageObject(id=id, title=title, owner=owner, place=place, date=date, hasAuthor=[author])
+                    cultural_obj = CulturalHeritageObject(id=id, title=title, owner=owner, place=place, date=date, authors=[author])
             
                 object_list.append(cultural_obj)
 
@@ -971,7 +979,7 @@ class BasicMashup(object):
                     cls = dict_of_classes[activity_type]
                     if activity_type == 'acquisition':
                         activity = cls(
-                            refersTo_cho=obj_refers_to,
+                            object=obj_refers_to,
                             institute=row['responsible institute'],
                             person=row['responsible person'],
                             tool=row['tool'],
@@ -981,7 +989,7 @@ class BasicMashup(object):
                         )
                     else:
                         activity = cls(
-                            refersTo_cho=obj_refers_to,
+                            object=obj_refers_to,
                             institute=row['responsible institute'],
                             person=row['responsible person'],
                             tool=row['tool'],
@@ -1036,7 +1044,7 @@ class BasicMashup(object):
                     # Instantiate the appropriate activity object
                     if activity_type == 'acquisition':
                         activity = cls(
-                            refersTo_cho=obj_refers_to,
+                            object=obj_refers_to,
                             institute=row['responsible institute'],
                             person=row['responsible person'],
                             tool=row['tool'],
@@ -1046,7 +1054,7 @@ class BasicMashup(object):
                         )
                     else:
                         activity = cls(
-                            refersTo_cho=obj_refers_to,
+                            object=obj_refers_to,
                             institute=row['responsible institute'],
                             person=row['responsible person'],
                             tool=row['tool'],
@@ -1103,7 +1111,7 @@ class BasicMashup(object):
                     # Instantiate the appropriate activity object
                     if activity_type == 'acquisition':
                         activity = cls(
-                            refersTo_cho=obj_refers_to,
+                            object=obj_refers_to,
                             institute=row['responsible institute'],
                             person=row['responsible person'],
                             tool=row['tool'],
@@ -1113,7 +1121,7 @@ class BasicMashup(object):
                         )
                     else:
                         activity = cls(
-                            refersTo_cho=obj_refers_to,
+                            object=obj_refers_to,
                             institute=row['responsible institute'],
                             person=row['responsible person'],
                             tool=row['tool'],
@@ -1161,7 +1169,7 @@ class BasicMashup(object):
                     cls = dict_of_classes[activity_type]
                     if activity_type == 'acquisition':
                         activity = cls(
-                            refersTo_cho=obj_refers_to,
+                            object=obj_refers_to,
                             institute=row['responsible institute'],
                             person=row['responsible person'],
                             tool=row['tool'],
@@ -1171,7 +1179,7 @@ class BasicMashup(object):
                         )
                     else:
                         activity = cls(
-                            refersTo_cho=obj_refers_to,
+                            object=obj_refers_to,
                             institute=row['responsible institute'],
                             person=row['responsible person'],
                             tool=row['tool'],
@@ -1202,7 +1210,7 @@ class BasicMashup(object):
 
         # Filter out rows where 'start date' is missing or invalid
         df_filtered = df_union[df_union["start date"].notna()]
-        df_filtered = df_filtered[df_filtered["start date"] > date]
+        df_filtered = df_filtered[df_filtered["start date"] >= date]
 
         dict_of_classes = {
             'acquisition': Acquisition,
@@ -1222,7 +1230,7 @@ class BasicMashup(object):
                     cls = dict_of_classes[activity_type]
                     if activity_type == 'acquisition':
                         activity = cls(
-                            refersTo_cho=obj_refers_to,
+                            object=obj_refers_to,
                             institute=row['responsible institute'],
                             person=row['responsible person'],
                             tool=row['tool'],
@@ -1232,7 +1240,7 @@ class BasicMashup(object):
                         )
                     else:
                         activity = cls(
-                            refersTo_cho=obj_refers_to,
+                            object=obj_refers_to,
                             institute=row['responsible institute'],
                             person=row['responsible person'],
                             tool=row['tool'],
@@ -1283,7 +1291,7 @@ class BasicMashup(object):
                     cls = dict_of_classes[activity_type]
                     if activity_type == 'acquisition':
                         activity = cls(
-                            refersTo_cho=obj_refers_to,
+                            object=obj_refers_to,
                             institute=row['responsible institute'],
                             person=row['responsible person'],
                             tool=row['tool'],
@@ -1293,7 +1301,7 @@ class BasicMashup(object):
                         )
                     else:
                         activity = cls(
-                            refersTo_cho=obj_refers_to,
+                            object=obj_refers_to,
                             institute=row['responsible institute'],
                             person=row['responsible person'],
                             tool=row['tool'],
@@ -1350,11 +1358,12 @@ class BasicMashup(object):
         return activities
 
 
-class AdvancedMashup(BasicMashup):
+'''class AdvancedMashup(BasicMashup):
     def __init__(self):
         super().__init__()
 
     def getObjectsHandledByResponsiblePerson(self, partName: str) -> list[CulturalHeritageObject]: #chiara 
+
         obj_id = set()  
 
         for activity in self.getActivitiesByResponsiblePerson(partName):  
@@ -1367,7 +1376,7 @@ class AdvancedMashup(BasicMashup):
             if obj.id in obj_id:
                 obj_list.append(obj) 
         return obj_list  
-
+    
 
     def getObjectsHandledByResponsibleInstitution(self, partName: str) -> list[CulturalHeritageObject]:     #bea
         obj_id = set()  
@@ -1429,7 +1438,104 @@ class AdvancedMashup(BasicMashup):
                 unique_ids.add(author.id)
                 result_list.append(author)
         
+        return result_list'''
+
+
+
+
+class AdvancedMashup(BasicMashup):
+    def __init__(self):
+        super().__init__()
+
+    def getObjectsHandledByResponsiblePerson(self, partName: str) -> list[CulturalHeritageObject]: #ok
+        if not self.processQuery:
+            raise ValueError("No process query handlers set.")
+
+        activities = self.getActivitiesByResponsiblePerson(partName)
+        if not activities:
+            print(f"No activities found for person: {partName}")
+            return []
+
+        objects = {activity.refersTo() for activity in activities if activity.refersTo()}
+        return list(objects)
+    
+
+    def getObjectsHandledByResponsibleInstitution(self, partName: str) -> list[CulturalHeritageObject]:
+        if not self.processQuery: #ok
+            raise ValueError("No process query handlers set.")
+
+        activities = self.getActivitiesByResponsibleInstitution(partName)
+        if not activities:
+            print(f"No activities found for institution: {partName}")
+            return []
+
+        objects = {activity.refersTo() for activity in activities if activity.refersTo()}
+        return list(objects)
+
+
+    def getActivitiesOnObjectsAuthoredBy(self, personId: str) -> list[Activity]:  # cata
+        # Step 1: Get the cultural heritage objects authored by the given person
+        list_of_objects = self.getCulturalHeritageObjectsAuthoredBy(personId)
+        
+        # Debugging: Check if no objects were found
+        if not list_of_objects:
+            print(f"No cultural heritage objects found for person: {personId}")
+            return []
+
+        # Step 2: Get all activities
+        all_activities = self.getAllActivities()
+
+        # Debugging: Check if no activities were found
+        if not all_activities:
+            print("No activities found.")
+            return []
+
+        # Step 3: Create a set of object IDs for faster lookup
+        object_ids = {obj.id for obj in list_of_objects}
+
+        # Step 4: Filter activities where the referred object is in the object_ids set
+        activities = [activity for activity in all_activities if activity.refersTo().id in object_ids]
+
+        # Debugging: Log the number of activities found
+        if not activities:
+            print(f"No activities found for objects authored by person: {personId}")
+        else:
+            print(f"Found {len(activities)} activities for objects authored by person: {personId}")
+
+        return activities
+
+
+    def getAuthorsOfObjectsAcquiredInTimeFrame(self, start: str, end: str) -> list[Person]:  
+        activities_after = self.getActivitiesStartedAfter(start)
+        filtered_activities_after = [activity for activity in activities_after if isinstance(activity, Acquisition)]
+
+        ids_of_filtered_objects = set()
+        for act in filtered_activities_after:
+            date = datetime.strptime(act.end, '%Y-%m-%d')
+            if date <= datetime.strptime(end, '%Y-%m-%d'):
+                ids_of_filtered_objects.add(act.refersTo().id)
+
+        result_list = []
+        all_authors = []
+
+        for id in ids_of_filtered_objects:
+            authors = self.getAuthorsOfCulturalHeritageObject(id)
+            if authors:
+                all_authors.extend(authors)
+
+        unique_ids = set()
+        # Iterate over the list in reverse order
+        for i in range(len(all_authors) - 1, -1, -1):
+            author = all_authors[i]
+            if author.id in unique_ids:
+                del all_authors[i]  # Remove duplicate author
+            else:
+                unique_ids.add(author.id)
+                result_list.append(author)
+
         return result_list
+
+
 
 
 #------------------TEST-----------------------------
