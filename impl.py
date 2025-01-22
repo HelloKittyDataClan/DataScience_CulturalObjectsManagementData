@@ -742,68 +742,68 @@ class BasicMashup(object):
             self.processQuery.append(handler)  # Adds a process handler to the list
             return True
         
-    def getEntityById(self, related_id: str):   #bea
+    def getEntityById(self, id: str):   #bea
         if not self.metadataQuery:
             return None
 
         for handler in self.metadataQuery:
-            entity_df = handler.getById(related_id)
+            entity_df = handler.getById(id)
 
             if entity_df.empty:
                 continue
 
             row = entity_df.loc[0]
 
-            if not related_id.isdigit():
-                person_uri = related_id
+            if not id.isdigit():
+                person_uri = id
                 result = Person(person_uri, row["author_name"])
                 return result
 
             # Assicurati che authors sia una lista
-            authors = self.getAuthorsOfCulturalHeritageObject(related_id)
+            authors = self.getAuthorsOfCulturalHeritageObject(id)
 
             base_url = "http://github.com/HelloKittyDataClan/DSexam/" 
 
             # Creazione dell'oggetto basato sul tipo
             if row["type"] == base_url + "NauticalChart":
                 new_object = NauticalChart(
-                    row["title"], row["owner"], row["place"], authors, row["date"], related_id
+                    row["title"], row["owner"], row["place"], authors, row["date"], id
                 )
             elif row["type"] == base_url + "ManuscriptPlate":
                 new_object = ManuscriptPlate(
-                    row["title"], row["owner"], row["place"], authors, row["date"], related_id
+                    row["title"], row["owner"], row["place"], authors, row["date"], id
                 )
             elif row["type"] == base_url + "ManuscriptVolume":
                 new_object = ManuscriptVolume(
-                    row["title"], row["owner"], row["place"], authors, row["date"], related_id
+                    row["title"], row["owner"], row["place"], authors, row["date"], id
                 )
             elif row["type"] == base_url + "PrintedVolume":
                 new_object = PrintedVolume(
-                    row["title"], row["owner"], row["place"], authors, row["date"], related_id
+                    row["title"], row["owner"], row["place"], authors, row["date"], id
                 )
             elif row["type"] == base_url + "PrintedMaterial":
                 new_object = PrintedMaterial(
-                    row["title"], row["owner"], row["place"], authors, row["date"], related_id
+                    row["title"], row["owner"], row["place"], authors, row["date"], id
                 )
             elif row["type"] == "https://dbpedia.org/property/Herbarium":
                 new_object = Herbarium(
-                    row["title"], row["owner"], row["place"], authors, row["date"], related_id
+                    row["title"], row["owner"], row["place"], authors, row["date"], id
                 )
             elif row["type"] == base_url + "Specimen":
                 new_object = Specimen(
-                    row["title"], row["owner"], row["place"], authors, row["date"], related_id
+                    row["title"], row["owner"], row["place"], authors, row["date"], id
                 )
             elif row["type"] == "https://dbpedia.org/property/Painting":
                 new_object = Painting(
-                    row["title"], row["owner"], row["place"], authors, row["date"], related_id
+                    row["title"], row["owner"], row["place"], authors, row["date"], id
                 )
             elif row["type"] == "https://dbpedia.org/property/Model":
                 new_object = Model(
-                    row["title"], row["owner"], row["place"], authors, row["date"], related_id
+                    row["title"], row["owner"], row["place"], authors, row["date"], id
                 )
             elif row["type"] == "https://dbpedia.org/property/Map":
                 new_object = Map(
-                    row["title"], row["owner"], row["place"], authors, row["date"], related_id
+                    row["title"], row["owner"], row["place"], authors, row["date"], id
                 )
             else:
                 continue
