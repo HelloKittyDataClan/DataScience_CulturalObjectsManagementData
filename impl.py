@@ -775,43 +775,43 @@ class BasicMashup(object):
             # Creazione dell'oggetto basato sul tipo
             if row["type"] == base_url + "NauticalChart":
                 new_object = NauticalChart(
-                    row["title"], row["owner"], row["place"], authors, row["date"], id
-                ) #non si chiama hasAuthors?
+                    id, row["title"], row["owner"], row["place"], authors, row["date"]
+                )
             elif row["type"] == base_url + "ManuscriptPlate":
                 new_object = ManuscriptPlate(
-                    row["title"], row["owner"], row["place"], authors, row["date"], id
+                    id, row["title"], row["owner"], row["place"], authors, row["date"]
                 )
             elif row["type"] == base_url + "ManuscriptVolume":
                 new_object = ManuscriptVolume(
-                    row["title"], row["owner"], row["place"], authors, row["date"], id
+                    id, row["title"], row["owner"], row["place"], authors, row["date"]
                 )
             elif row["type"] == base_url + "PrintedVolume":
                 new_object = PrintedVolume(
-                    row["title"], row["owner"], row["place"], authors, row["date"], id
+                    id, row["title"], row["owner"], row["place"], authors, row["date"]
                 )
             elif row["type"] == base_url + "PrintedMaterial":
                 new_object = PrintedMaterial(
-                    row["title"], row["owner"], row["place"], authors, row["date"], id
+                    id, row["title"], row["owner"], row["place"], authors, row["date"]
                 )
             elif row["type"] == "https://dbpedia.org/property/Herbarium":
                 new_object = Herbarium(
-                    row["title"], row["owner"], row["place"], authors, row["date"], id
+                    id, row["title"], row["owner"], row["place"], authors, row["date"]
                 )
             elif row["type"] == base_url + "Specimen":
                 new_object = Specimen(
-                    row["title"], row["owner"], row["place"], authors, row["date"], id
+                    id, row["title"], row["owner"], row["place"], authors, row["date"]
                 )
             elif row["type"] == "https://dbpedia.org/property/Painting":
                 new_object = Painting(
-                    row["title"], row["owner"], row["place"], authors, row["date"], id
+                    id, row["title"], row["owner"], row["place"], authors, row["date"]
                 )
             elif row["type"] == "https://dbpedia.org/property/Model":
                 new_object = Model(
-                    row["title"], row["owner"], row["place"], authors, row["date"], id
+                    id, row["title"], row["owner"], row["place"], authors, row["date"]
                 )
             elif row["type"] == "https://dbpedia.org/property/Map":
                 new_object = Map(
-                    row["title"], row["owner"], row["place"], authors, row["date"], id
+                    id, row["title"], row["owner"], row["place"], authors, row["date"]
                 )
             else:
                 continue
@@ -1585,7 +1585,7 @@ result = mashup.getObjectsHandledByResponsiblePerson("Grace Hopper")
 pp(result)
 '''
 
-'''
+
 
 #TEST FINALI DI VALENTINO
 
@@ -1596,7 +1596,7 @@ process.pushDataToDb("data/process.json")
 # Please remember that one could, in principle, push one or more files calling the method one or more times (even calling the method twice specifying the same file!)
 
 metadata = MetadataUploadHandler()
-metadata.setDbPathOrUrl("http://10.201.21.75:9999/blazegraph/")
+metadata.setDbPathOrUrl("http://192.168.1.75:9999/blazegraph/")
 metadata.pushDataToDb("data/meta.csv")
 # Please remember that one could, in principle, push one or more files calling the method one or more times (even calling the method twice specifying the same file!)
 
@@ -1605,7 +1605,7 @@ process_qh = ProcessDataQueryHandler()
 process_qh.setDbPathOrUrl(rel_path)
 
 metadata_qh = MetadataQueryHandler()
-metadata_qh.setDbPathOrUrl("http://10.201.21.75:9999/blazegraph/")
+metadata_qh.setDbPathOrUrl("http://192.168.1.75:9999/blazegraph/")
 
 masha = BasicMashup()
 masha.metadataQuery = [metadata_qh]
@@ -1617,14 +1617,10 @@ mashup = AdvancedMashup()
 mashup.addProcessHandler(process_qh)
 mashup.addMetadataHandler(metadata_qh)
 
-'''
+result_q6 = mashup.getActivitiesOnObjectsAuthoredBy("ULAN:500114874")
 
-mashup = BasicMashup()
-process_query = ProcessDataQueryHandler()
-process_query.setDbPathOrUrl("relational.db")
+result_q7 = mashup.getObjectsHandledByResponsiblePerson("Alice Liddell")
 
-# Adding process query handler to mashup
-mashup.addProcessHandler(process_query)
 
 # Calling the method 1
 '''all_activities = mashup.getAllActivities()
