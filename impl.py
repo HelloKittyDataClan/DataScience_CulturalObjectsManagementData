@@ -100,8 +100,8 @@ class Map(CulturalHeritageObject):
 
 #____________________ JSON______________________
 
-class Activity(object):                               
-    def __init__(self, object: CulturalHeritageObject, institute: str, person: str, start: str, end: str, tool: str|list[str]):
+class Activity(object):      #cata                         
+    def __init__(self, object: CulturalHeritageObject, institute: str, person: str, start: str, end: str, tool: str|list[str]): 
         self.object = object
         self.institute = institute
         self.person = person     
@@ -113,11 +113,6 @@ class Activity(object):
             self.tool.append(tool)
         elif type(tool) == list:
             self.tool = tool
-    
-    '''def __str__(self):
-        tools_str = ", ".join(self.tool)
-        return (f"Activity: {self.__class__.__name__}, Institute: {self.institute}, "
-                f"Person: {self.person}, Start: {self.start}, End: {self.end}, Tool: {tools_str}")'''
 
     def getResponsibleInstitute(self):
         return self.institute
@@ -147,22 +142,15 @@ class Activity(object):
 
 class Acquisition(Activity):
     def __init__(self, object: CulturalHeritageObject, institute: str, technique: str, person: str, start: str, end: str, tool: str|list[str]):
-
         super().__init__(object, institute, person, start, end, tool)  
         
         self.technique = technique 
-
-    '''def __str__(self):
-        # Extend the base class string representation
-        return f"{super().__str__()}, Technique: {self.technique}"'''
 
     def getTechnique(self):
         return self.technique
     
 
 class Processing(Activity):
-    '''def __str__(self):
-        return super().__str__()'''
     pass
 
 
