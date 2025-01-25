@@ -35,7 +35,7 @@ class Person(IdentifiableEntity):
 
 #___________________________CSV_________________________
 
-class CulturalHeritageObject(IdentifiableEntity):
+class CulturalHeritageObject(IdentifiableEntity):        #chiara
     def __init__(self, id: str, title: str, owner: str, place: str, date:str = None, authors: Person|list[Person]|None=None):
         super().__init__(id)
         self.title = title
@@ -44,7 +44,7 @@ class CulturalHeritageObject(IdentifiableEntity):
         self.date = date
         self.authors = list() 
 
-        if type(authors) == Person:
+        if type(authors) == Person:              #bea
             self.authors.append(Person)
         elif type(authors) == list:
             self.authors = authors
