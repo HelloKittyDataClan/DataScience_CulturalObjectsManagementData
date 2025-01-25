@@ -234,11 +234,10 @@ class MetadataUploadHandler(UploadHandler):  # chiara
             owner = URIRef(base_url + "owner")
 
             relAuthor = URIRef(schema + "author")
-          
+
             name = URIRef(FOAF + "name") 
 
 
-           
             for idx, row in venus.iterrows():
                 loc_id = "culturalobject-" + str(row["Id"])
                 subj = URIRef(base_url + loc_id)
@@ -288,13 +287,13 @@ class MetadataUploadHandler(UploadHandler):  # chiara
                             
                             related_person = URIRef(base_url + "Person/" + author_id)
                             
-                           
+
                             my_graph.add((subj, relAuthor, related_person))  
                             my_graph.add((related_person, name, Literal(author_name))) 
                             my_graph.add((related_person, id, Literal(author_id))) 
                             
 
-          
+
             store = SPARQLUpdateStore()
             endpoint = self.getDbPathOrUrl() + "sparql"
             store.open((endpoint, endpoint)) 
@@ -345,10 +344,8 @@ class ProcessDataUploadHandler(UploadHandler):  #catalina
                 field_entry['object id'] = item['object id']
                 table_data.append(field_entry)
 
-     
         df_activities = pd.DataFrame(table_data)
         
-      
         if 'tool' in df_activities.columns:
             df_activities['tool'] = df_activities['tool'].apply(lambda x: ', '.join(x) if isinstance(x, list) else x)
             
@@ -356,9 +353,7 @@ class ProcessDataUploadHandler(UploadHandler):  #catalina
 
  
     def addInternalIds(self, df: pd.DataFrame, field_name: str) -> pd.DataFrame:
-      
         internal_ids = [f"{field_name}-{idx}" for idx in range(len(df))]
-     
         df.insert(0, "internalId", Series(internal_ids, dtype="string"))
         
         return df
@@ -368,35 +363,29 @@ class ProcessDataUploadHandler(UploadHandler):  #catalina
         columns = ["internalId", "object id", "responsible institute", "responsible person", "tool", "start date", "end date"]
         if include_technique:
             columns.insert(4, "technique") 
-        
         identifiers = df[columns]
         identifiers = identifiers.rename(columns={"object id": "objectId"})
         return identifiers
         
- 
     def pushDataToDb(self, activities_file_path: str):
-      
         acquisition_df = self.pushDataToDbActivities(activities_file_path, 'acquisition')
         processing_df = self.pushDataToDbActivities(activities_file_path, 'processing')
         modelling_df = self.pushDataToDbActivities(activities_file_path, 'modelling')
         optimising_df = self.pushDataToDbActivities(activities_file_path, 'optimising')
         exporting_df = self.pushDataToDbActivities(activities_file_path, 'exporting')
 
-     
         acquisition_df = self.addInternalIds(acquisition_df, 'acquisition')
         processing_df = self.addInternalIds(processing_df, 'processing')
         modelling_df = self.addInternalIds(modelling_df, 'modelling')
         optimising_df = self.addInternalIds(optimising_df, 'optimising')
         exporting_df = self.addInternalIds(exporting_df, 'exporting')
         
-
         acquisition_final_db = self.extractAndRenameColumns(acquisition_df, include_technique=True)
         processing_final_db = self.extractAndRenameColumns(processing_df)
         modelling_final_db = self.extractAndRenameColumns(modelling_df)
         optimising_final_db = self.extractAndRenameColumns(optimising_df)
         exporting_final_db = self.extractAndRenameColumns(exporting_df)
         
-
         with connect("relational.db") as con:
             acquisition_final_db.to_sql("Acquisition", con, if_exists="replace", index=False)
             processing_final_db.to_sql("Processing", con, if_exists="replace", index=False)
@@ -456,7 +445,7 @@ class QueryHandler(Handler):
         results = get(endpoint, query, True) 
         return results
     
- #_____________________MetadataQueryHandler____________________________   
+#_____________________MetadataQueryHandler____________________________   
 
 class MetadataQueryHandler(QueryHandler):
     def __init__(self):
@@ -715,12 +704,12 @@ class BasicMashup(object):
                 result = Person(person_uri, row["author_name"])
                 return result
 
-          
+
             authors = self.getAuthorsOfCulturalHeritageObject(id)
 
             base_url = "http://github.com/HelloKittyDataClan/DSexam/" 
 
-           
+
             if row["type"] == base_url + "NauticalChart":
                 new_object = NauticalChart(
                     id, row["title"], row["owner"], row["place"], authors, row["date"]
@@ -791,7 +780,6 @@ class BasicMashup(object):
                 owner = row.owner
                 place = row.place
 
-             
                 authors = []
                 df_authors = metadata.getAuthorsOfCulturalHeritageObject(obj_id)
                 for _, author_row in df_authors.iterrows():
@@ -800,13 +788,10 @@ class BasicMashup(object):
                     author = Person(id=author_id, name=author_name)
                     authors.append(author)
 
-              
                 object_type = row.type.split("/")[-1]  
                 
-               
                 obj_class = globals().get(object_type)  
 
-               
                 obj_instance = obj_class(
                     id=obj_id,
                     title=title,
@@ -816,7 +801,6 @@ class BasicMashup(object):
                     authors=authors,
                 )
 
-               
                 cultural_objects[obj_id] = obj_instance
 
         return list(cultural_objects.values()) 
@@ -892,7 +876,7 @@ class BasicMashup(object):
         return object_list
 
 
-    def getAllActivities(self) -> List[Activity]:   #elena
+    def getAllActivities(self) -> List[Activity]:            #elena
         result = []
         handler_list = self.processQuery
         df_list = []
@@ -903,7 +887,6 @@ class BasicMashup(object):
         if not df_list:
             return []
 
-       
         df_union = pd.concat(df_list, ignore_index=True).drop_duplicates().fillna("")
 
         dict_of_classes = {
@@ -947,20 +930,17 @@ class BasicMashup(object):
         return result
 
         
-    def getActivitiesByResponsibleInstitution(self, partialName: str) -> List[Activity]:
+    def getActivitiesByResponsibleInstitution(self, partialName: str) -> List[Activity]:                     #elena
         result = []  
         handler_list = self.processQuery 
         df_list = [] 
 
-       
         for handler in handler_list:
             df_list.append(handler.getActivitiesByResponsibleInstitution(partialName))
 
-      
         if not df_list:
             return []
 
-       
         df_union = pd.concat(df_list, ignore_index=True).drop_duplicates().fillna("")
 
 
@@ -972,10 +952,8 @@ class BasicMashup(object):
             'exporting': Exporting
         }
 
-       
         df_union = df_union[df_union['responsible institute'].str.contains(partialName, case=False, na=False)]
 
-       
         for _, row in df_union.iterrows():
             # Extract activity type from internalId
             match_type = re.search(r'^[^-]*', row["internalId"])
@@ -983,7 +961,6 @@ class BasicMashup(object):
                 activity_type = match_type.group(0)  
                 obj_refers_to = self.getEntityById(row["objectId"])  
 
-              
                 if activity_type in dict_of_classes:
                     cls = dict_of_classes[activity_type]  
 
@@ -1008,13 +985,12 @@ class BasicMashup(object):
                             end=row['end date']
                         )
 
-                  
                     result.append(activity)
 
         return result
 
 
-    def getActivitiesByResponsiblePerson(self, partialName: str) -> List[Activity]:
+    def getActivitiesByResponsiblePerson(self, partialName: str) -> List[Activity]:                     #elena
         result = []  
         handler_list = self.processQuery  
         df_list = []  
@@ -1022,12 +998,9 @@ class BasicMashup(object):
         
         for handler in handler_list:
             df_list.append(handler.getActivitiesByResponsiblePerson(partialName))
-
-       
         if not df_list:
             return []
 
-       
         df_union = pd.concat(df_list, ignore_index=True).drop_duplicates().fillna("")
 
         
@@ -1039,22 +1012,18 @@ class BasicMashup(object):
             'exporting': Exporting
         }
 
-       
         df_union = df_union[df_union['responsible person'].str.contains(partialName, case=False, na=False)]
 
         
         for _, row in df_union.iterrows():
-          
             match_type = re.search(r'^[^-]*', row["internalId"])
             if match_type:
                 activity_type = match_type.group(0)  
                 obj_refers_to = self.getEntityById(row["objectId"])  
 
-               
                 if activity_type in dict_of_classes:
                     cls = dict_of_classes[activity_type]  
 
-                   
                     if activity_type == 'acquisition':
                         activity = cls(
                             object=obj_refers_to,
@@ -1075,26 +1044,21 @@ class BasicMashup(object):
                             end=row['end date']
                         )
 
-                   
                     result.append(activity)
 
         return result
 
 
-    def getActivitiesUsingTool(self, partialName: str) -> List[Activity]:
+    def getActivitiesUsingTool(self, partialName: str) -> List[Activity]:                    #elena
         result = []
         handler_list = self.processQuery
         df_list = []
 
-       
         for handler in handler_list:
             df_list.append(handler.getActivitiesUsingTool(partialName))
-
-      
         if not df_list:
             return []
 
-      
         df_union = pd.concat(df_list, ignore_index=True).drop_duplicates().fillna("")
 
         dict_of_classes = {
@@ -1137,7 +1101,7 @@ class BasicMashup(object):
         return result
 
 
-    def getActivitiesStartedAfter(self, date: str) -> List[Activity]:
+    def getActivitiesStartedAfter(self, date: str) -> List[Activity]:                      #catalina
         result = []
         handler_list = self.processQuery
         df_list = []
@@ -1147,13 +1111,8 @@ class BasicMashup(object):
         if not df_list:
             return []
 
-       
         df_union = pd.concat(df_list, ignore_index=True).drop_duplicates().fillna("")
-
-       
         df_union['start date'] = pd.to_datetime(df_union['start date'], errors='coerce')
-
-       
         df_filtered = df_union[df_union["start date"].notna()]
         df_filtered = df_filtered[df_filtered["start date"] >= date]
 
@@ -1197,21 +1156,18 @@ class BasicMashup(object):
         return result
 
 
-    def getActivitiesEndedBefore(self, date: str) -> List[Activity]:
+    def getActivitiesEndedBefore(self, date: str) -> List[Activity]:               #catalina
         result = []
         handler_list = self.processQuery
         df_list = []
 
         for handler in handler_list:
             df_list.append(handler.getAllActivities())
-
         if not df_list:
             return []
 
         df_union = pd.concat(df_list, ignore_index=True).drop_duplicates().fillna("")
-
         df_union['end date'] = pd.to_datetime(df_union['end date'], errors='coerce')
-
         df_filtered = df_union[df_union["end date"].notna()]
         df_filtered = df_filtered[df_filtered["end date"] < date]
 
@@ -1255,20 +1211,17 @@ class BasicMashup(object):
         return result
 
 
-    def getAcquisitionsByTechnique(self, partialName: str) -> list[Acquisition]:
+    def getAcquisitionsByTechnique(self, partialName: str) -> list[Acquisition]:            #catalina
         df = pd.DataFrame()
         handler_list = self.processQuery
-
         
         for handler in handler_list:
             df_process = handler.getAcquisitionsByTechnique(partialName)
             df = pd.concat([df, df_process], ignore_index=True).drop_duplicates()
             df.fillna('', inplace=True)
-
         if df.empty:
             return []
 
-       
         activity_classes = {
             'acquisition': Acquisition,
             'processing': Processing,
@@ -1288,10 +1241,8 @@ class BasicMashup(object):
             tool = row["tool"]
             technique = row["technique"]
             
-          
             activity_type = re.match(r'^[^-]*', row["internalId"]).group(0)
             
-           
             activity_class = activity_classes.get(activity_type)
             if activity_class:
                 activity = activity_class(refers_to, institute, technique, person, start_date, end_date, tool)
@@ -1340,7 +1291,7 @@ class AdvancedMashup(BasicMashup):
     def getActivitiesOnObjectsAuthoredBy(self, personId: str) -> list[Activity]: #catalina
 
         list_of_objects = self.getCulturalHeritageObjectsAuthoredBy(personId)
-   
+
         all_activities = self.getAllActivities()
         
         object_ids = {obj.id for obj in list_of_objects}
