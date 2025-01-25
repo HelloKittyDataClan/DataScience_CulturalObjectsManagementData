@@ -44,7 +44,7 @@ class CulturalHeritageObject(IdentifiableEntity):        #chiara
         self.date = date
         self.authors = list() 
 
-        if type(authors) == Person:              #bea
+        if type(authors) == Person:              #beatrice
             self.authors.append(Person)
         elif type(authors) == list:
             self.authors = authors
@@ -100,7 +100,7 @@ class Map(CulturalHeritageObject):
 
 #____________________ JSON______________________
 
-class Activity(object):      #cata                         
+class Activity(object):      #catalina                         
     def __init__(self, object: CulturalHeritageObject, institute: str, person: str, start: str, end: str, tool: str|list[str]): 
         self.object = object
         self.institute = institute
@@ -166,7 +166,7 @@ class Exporting(Activity):
 #_______________Handlers_____________________
 
 
-class Handler(object):  # chiara
+class Handler(object):  #chiara
     def __init__(self):
         self.dbPathOrUrl = ""
 
@@ -177,7 +177,7 @@ class Handler(object):  # chiara
         self.dbPathOrUrl = pathOrUrl
         return self.dbPathOrUrl == pathOrUrl
 
-class UploadHandler(Handler):   #bea
+class UploadHandler(Handler):   #beatrice
     def __init__(self):
         super().__init__()
 
@@ -833,15 +833,15 @@ class BasicMashup(object):
             objects_df = handler.getCulturalHeritageObjectsAuthoredBy(personId)
         
             for _, row in objects_df.iterrows():
-                id = str(row['id'])  # Ensure ID is a string
+                id = str(row['id'])
                 title = row['title']
                 date = row.get('date')
                 if date is not None and not isinstance(date, str):
-                    date = str(date)  # Convert date to string if it's not None and not already a string
+                    date = str(date)
                 owner = row['owner']
                 place = row['place']
                 author_name = row['authorName']
-                author_id = str(row['authorID'])  # Ensure author ID is a string
+                author_id = str(row['authorID'])
                 author = Person(id=author_id, name=author_name)
 
                 obj_type = row['type'].split('/')[-1]
@@ -904,7 +904,6 @@ class BasicMashup(object):
                 obj_refers_to = self.getEntityById(row["objectId"])
 
                 if activity_type in dict_of_classes:
-                    # Create the appropriate activity object
                     cls = dict_of_classes[activity_type]
                     if activity_type == 'acquisition':
                         activity = cls(
@@ -955,7 +954,6 @@ class BasicMashup(object):
         df_union = df_union[df_union['responsible institute'].str.contains(partialName, case=False, na=False)]
 
         for _, row in df_union.iterrows():
-            # Extract activity type from internalId
             match_type = re.search(r'^[^-]*', row["internalId"])
             if match_type:
                 activity_type = match_type.group(0)  
@@ -1288,7 +1286,7 @@ class AdvancedMashup(BasicMashup):
         return obj_list  
         
     
-    def getActivitiesOnObjectsAuthoredBy(self, personId: str) -> list[Activity]: #catalina
+    def getActivitiesOnObjectsAuthoredBy(self, personId: str) -> list[Activity]: #elena
 
         list_of_objects = self.getCulturalHeritageObjectsAuthoredBy(personId)
 
@@ -1301,7 +1299,7 @@ class AdvancedMashup(BasicMashup):
         return activities
     
 
-    def getAuthorsOfObjectsAcquiredInTimeFrame(self, start: str, end: str) -> list[Person]: #elena
+    def getAuthorsOfObjectsAcquiredInTimeFrame(self, start: str, end: str) -> list[Person]: #catalina
         
         activities_after = self.getActivitiesStartedAfter(start)
         filtered_activities_after = [activity for activity in activities_after if isinstance(activity, Acquisition)]
