@@ -239,8 +239,7 @@ class MetadataUploadHandler(UploadHandler):  # chiara
             Specimen = URIRef(base_url + "Specimen")
             Painting = URIRef(db + "Painting")
             Model = URIRef(db + "Model")
-            Map = URIRef(db + "Map")
-
+            Map = URIRef(base_url + "Map")
 
             title = URIRef(schema + "title")
             date = URIRef(schema + "dateCreated")
@@ -251,7 +250,6 @@ class MetadataUploadHandler(UploadHandler):  # chiara
             relAuthor = URIRef(schema + "author")
 
             name = URIRef(FOAF + "name") 
-
 
             for idx, row in venus.iterrows():
                 loc_id = "culturalobject-" + str(row["Id"])
@@ -308,9 +306,8 @@ class MetadataUploadHandler(UploadHandler):  # chiara
                             my_graph.add((related_person, id, Literal(author_id))) 
                             
 
-
             store = SPARQLUpdateStore()
-            endpoint = self.getDbPathOrUrl() + "sparql"
+            endpoint = self.getDbPathOrUrl()  # Modificato per rimuovere l'aggiunta di "/sparql"
             store.open((endpoint, endpoint)) 
 
             for triple in my_graph.triples((None, None, None)):
@@ -338,7 +335,7 @@ class MetadataUploadHandler(UploadHandler):  # chiara
                 return False
         
         
-#_____________________RELATIONALDATA BASE____________________________
+#_____________________RELATIONAL DATABASE____________________________
 
 
 class ProcessDataUploadHandler(UploadHandler):  #catalina
@@ -414,8 +411,8 @@ class ProcessDataUploadHandler(UploadHandler):  #catalina
 #_____________________QueryHandler____________________________
 
 class QueryHandler(Handler):
-    def __init__(self,):  
-        super().__init__()
+    def _init_(self):  
+        super()._init_()
     
 
     def getById(self, id: str) -> pd.DataFrame:     #beatrice
@@ -426,9 +423,8 @@ class QueryHandler(Handler):
         else:
             return pd.DataFrame() 
         
-
-        endpoint = db_address + "sparql" if db_address.endswith("/") else db_address + "/sparql"
-
+        # Eliminata l'aggiunta manuale di "/sparql"
+        endpoint = db_address  
 
         if id.isdigit():
             query = """
@@ -464,26 +460,24 @@ class QueryHandler(Handler):
 #_____________________MetadataQueryHandler____________________________   
 
 class MetadataQueryHandler(QueryHandler):
-    def __init__(self):
-        super().__init__()
+    def _init_(self):
+        super()._init_()
     
     def getAllPeople(self):         #chiara
         query = """
         PREFIX FOAF: <http://xmlns.com/foaf/0.1/>
         PREFIX schema: <http://schema.org/>
 
-
         SELECT DISTINCT ?id_auth ?name_auth
         WHERE {
             ?c_obj schema:author ?auth .
             ?auth schema:identifier ?id_auth ;
                 FOAF:name ?name_auth .
-                    }
+        }
         """
-        results = get(self.dbPathOrUrl + "sparql", query, True)
+        results = get(self.dbPathOrUrl, query, True)
         return results
 
-    
     def getAllCulturalHeritageObjects(self):        #beatrice
         query = """
         PREFIX schema: <http://schema.org/>
@@ -519,9 +513,8 @@ class MetadataQueryHandler(QueryHandler):
             ))
         }
         """
-        results = get(self.dbPathOrUrl + "sparql", query, True)
+        results = get(self.dbPathOrUrl, query, True)
         return results       
-    
 
     def getAuthorsOfCulturalHeritageObject(self, object_id: str) -> pd.DataFrame:          #chiara
         query = f"""
@@ -537,10 +530,9 @@ class MetadataQueryHandler(QueryHandler):
             foaf:name ?authorName .
         }} 
         """
-        results = get(self.dbPathOrUrl + "sparql",query, True)
+        results = get(self.dbPathOrUrl, query, True)
         return results
-    
-    
+
     def getCulturalHeritageObjectsAuthoredBy(self, personId: str) -> pd.DataFrame:          #beatrice
         query = f"""    
         PREFIX schema: <http://schema.org/>
@@ -577,7 +569,7 @@ class MetadataQueryHandler(QueryHandler):
             ))
         }}
         """
-        results = get(self.dbPathOrUrl + "sparql",query, True)
+        results = get(self.dbPathOrUrl, query, True)
         return results
 
  #_____________________ProcessDataQueryHandler____________________________   
