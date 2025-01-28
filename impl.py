@@ -1329,23 +1329,20 @@ class AdvancedMashup(BasicMashup):
         return obj_list  
     
 
-    def getObjectsHandledByResponsibleInstitution(self, partName: str) -> list[CulturalHeritageObject]:
+    def getObjectsHandledByResponsibleInstitution(self, partName: str) -> list[CulturalHeritageObject]:   #beatrice
         obj_id = set()  
 
-        # Ensure getActivitiesByResponsibleInstitution returns valid activities
         activities = self.getActivitiesByResponsibleInstitution(partName)
         if not activities:
-            return []  # If no activities, return an empty list
+            return []  
 
         for activity in activities:
-            # Ensure refersTo method returns a valid object and has an id
             referred_object = activity.refersTo()
             if referred_object is not None and isinstance(referred_object, CulturalHeritageObject):
                 obj_id.add(referred_object.id)
             else:
                 print(f"Invalid object referred by activity {activity.id}: {referred_object}")
         
-        # Ensure the getAllCulturalHeritageObjects method returns valid objects
         cultural_objects = self.getAllCulturalHeritageObjects()
         obj_list = []
 
@@ -1354,17 +1351,13 @@ class AdvancedMashup(BasicMashup):
                 obj_list.append(obj)
 
         return obj_list
- 
         
     
     def getActivitiesOnObjectsAuthoredBy(self, personId: str) -> list[Activity]: #elena
 
         list_of_objects = self.getCulturalHeritageObjectsAuthoredBy(personId)
-
         all_activities = self.getAllActivities()
-        
         object_ids = {obj.id for obj in list_of_objects}
-        
         activities = [activity for activity in all_activities if activity.refersTo().id in object_ids]
         
         return activities
