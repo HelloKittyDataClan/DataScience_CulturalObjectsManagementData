@@ -241,6 +241,7 @@ class MetadataUploadHandler(UploadHandler):  # chiara
             Model = URIRef(db + "Model")
             Map = URIRef(db + "Map")
 
+
             title = URIRef(schema + "title")
             date = URIRef(schema + "dateCreated")
             place = URIRef(schema + "itemLocation")
@@ -250,6 +251,7 @@ class MetadataUploadHandler(UploadHandler):  # chiara
             relAuthor = URIRef(schema + "author")
 
             name = URIRef(FOAF + "name") 
+
 
             for idx, row in venus.iterrows():
                 loc_id = "culturalobject-" + str(row["Id"])
@@ -306,8 +308,9 @@ class MetadataUploadHandler(UploadHandler):  # chiara
                             my_graph.add((related_person, id, Literal(author_id))) 
                             
 
+
             store = SPARQLUpdateStore()
-            endpoint = self.getDbPathOrUrl()  # Modificato per rimuovere l'aggiunta di "/sparql"
+            endpoint = self.getDbPathOrUrl()
             store.open((endpoint, endpoint)) 
 
             for triple in my_graph.triples((None, None, None)):
@@ -333,6 +336,7 @@ class MetadataUploadHandler(UploadHandler):  # chiara
             else:
                 print("Caricamento dei dati su Blazegraph non riuscito.")
                 return False
+
         
         
 #_____________________RELATIONAL DATABASE____________________________
@@ -423,8 +427,9 @@ class QueryHandler(Handler):
         else:
             return pd.DataFrame() 
         
-        # Eliminata l'aggiunta manuale di "/sparql"
-        endpoint = db_address  
+
+        endpoint = db_address
+
 
         if id.isdigit():
             query = """
@@ -468,16 +473,18 @@ class MetadataQueryHandler(QueryHandler):
         PREFIX FOAF: <http://xmlns.com/foaf/0.1/>
         PREFIX schema: <http://schema.org/>
 
+
         SELECT DISTINCT ?id_auth ?name_auth
         WHERE {
             ?c_obj schema:author ?auth .
             ?auth schema:identifier ?id_auth ;
                 FOAF:name ?name_auth .
-        }
+                    }
         """
         results = get(self.dbPathOrUrl, query, True)
         return results
 
+    
     def getAllCulturalHeritageObjects(self):        #beatrice
         query = """
         PREFIX schema: <http://schema.org/>
@@ -515,6 +522,7 @@ class MetadataQueryHandler(QueryHandler):
         """
         results = get(self.dbPathOrUrl, query, True)
         return results       
+    
 
     def getAuthorsOfCulturalHeritageObject(self, object_id: str) -> pd.DataFrame:          #chiara
         query = f"""
@@ -530,9 +538,10 @@ class MetadataQueryHandler(QueryHandler):
             foaf:name ?authorName .
         }} 
         """
-        results = get(self.dbPathOrUrl, query, True)
+        results = get(self.dbPathOrUrl,query, True)
         return results
-
+    
+    
     def getCulturalHeritageObjectsAuthoredBy(self, personId: str) -> pd.DataFrame:          #beatrice
         query = f"""    
         PREFIX schema: <http://schema.org/>
@@ -569,8 +578,9 @@ class MetadataQueryHandler(QueryHandler):
             ))
         }}
         """
-        results = get(self.dbPathOrUrl, query, True)
+        results = get(self.dbPathOrUrl,query, True)
         return results
+
 
  #_____________________ProcessDataQueryHandler____________________________   
 
