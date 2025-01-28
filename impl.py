@@ -36,7 +36,7 @@ class Person(IdentifiableEntity):
 #___________________________CSV_________________________
 
 class CulturalHeritageObject(IdentifiableEntity):        #chiara
-    def __init__(self, id: str, title: str, owner: str, place: str, date:str = None, authors: Person|list[Person]|None=None):
+    def __init__(self, id: str, title: str, owner: str, place: str, authors: Person|list[Person], date:str = None):
         super().__init__(id)
         self.title = title
         self.owner = owner
@@ -1159,20 +1159,23 @@ class BasicMashup(object):
         return result
 
 
-    def getActivitiesStartedAfter(self, date: str) -> List[Activity]:                      #catalina
+    def getActivitiesStartedAfter(self, date: str) -> List[Activity]:  
         result = []
         handler_list = self.processQuery
         df_list = []
 
+        
         for handler in handler_list:
             df_list.append(handler.getAllActivities())
         if not df_list:
             return []
 
         df_union = pd.concat(df_list, ignore_index=True).drop_duplicates().fillna("")
+        
         df_union['start date'] = pd.to_datetime(df_union['start date'], errors='coerce')
+
         df_filtered = df_union[df_union["start date"].notna()]
-        df_filtered = df_filtered[df_filtered["start date"] >= date]
+        df_filtered = df_filtered[df_filtered["start date"] >= pd.to_datetime(date)]
 
         dict_of_classes = {
             'acquisition': Acquisition,
@@ -1190,14 +1193,19 @@ class BasicMashup(object):
 
                 if activity_type in dict_of_classes:
                     cls = dict_of_classes[activity_type]
+                    
+                    start_date = row['start date'] if isinstance(row['start date'], (str, type(None))) else None
+
+                    end_date = row['end date'] if isinstance(row['end date'], (str, type(None))) else None
+
                     if activity_type == 'acquisition':
                         activity = cls(
                             object=obj_refers_to,
                             institute=row['responsible institute'],
                             person=row['responsible person'],
                             tool=row['tool'],
-                            start=row['start date'],
-                            end=row['end date'],
+                            start=start_date,
+                            end=end_date,
                             technique=row['technique']
                         )
                     else:
@@ -1206,15 +1214,15 @@ class BasicMashup(object):
                             institute=row['responsible institute'],
                             person=row['responsible person'],
                             tool=row['tool'],
-                            start=row['start date'],
-                            end=row['end date']
+                            start=start_date,
+                            end=end_date
                         )
                     result.append(activity)
 
         return result
 
 
-    def getActivitiesEndedBefore(self, date: str) -> List[Activity]:               #catalina
+    def getActivitiesEndedBefore(self, date: str) -> List[Activity]:
         result = []
         handler_list = self.processQuery
         df_list = []
@@ -1225,9 +1233,11 @@ class BasicMashup(object):
             return []
 
         df_union = pd.concat(df_list, ignore_index=True).drop_duplicates().fillna("")
+        
         df_union['end date'] = pd.to_datetime(df_union['end date'], errors='coerce')
+
         df_filtered = df_union[df_union["end date"].notna()]
-        df_filtered = df_filtered[df_filtered["end date"] < date]
+        df_filtered = df_filtered[df_filtered["end date"] < pd.to_datetime(date)]
 
         dict_of_classes = {
             'acquisition': Acquisition,
@@ -1245,6 +1255,9 @@ class BasicMashup(object):
 
                 if activity_type in dict_of_classes:
                     cls = dict_of_classes[activity_type]
+                    
+                    end_date = row['end date'] if isinstance(row['end date'], (str, type(None))) else None
+
                     if activity_type == 'acquisition':
                         activity = cls(
                             object=obj_refers_to,
@@ -1252,7 +1265,7 @@ class BasicMashup(object):
                             person=row['responsible person'],
                             tool=row['tool'],
                             start=row['start date'],
-                            end=row['end date'],
+                            end=end_date,
                             technique=row['technique']
                         )
                     else:
@@ -1262,7 +1275,7 @@ class BasicMashup(object):
                             person=row['responsible person'],
                             tool=row['tool'],
                             start=row['start date'],
-                            end=row['end date']
+                            end=end_date
                         )
                     result.append(activity)
 
