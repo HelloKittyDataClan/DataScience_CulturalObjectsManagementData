@@ -101,18 +101,30 @@ class Map(CulturalHeritageObject):
 #____________________ JSON______________________
 
 class Activity(object):      #catalina                         
-    def __init__(self, object: CulturalHeritageObject, institute: str, person: str, start: str, end: str, tool: str|list[str]): 
-        self.object = object
-        self.institute = institute
-        self.person = person     
-        self.start = start
-        self.end = end
+    def __init__(self, object: CulturalHeritageObject, institute: str, person: str|None=None, start: str|None=None, end: str|None=None, tool: str|list[str]|None=None): 
+        if not isinstance(object, CulturalHeritageObject):
+            raise ValueError("Activity.object must be a CulturalHeritageObject")
+        if not isinstance(institute, str):
+            raise ValueError("Activity.institute must be a string")
+        if not isinstance(person, str) and person is not None:
+            raise ValueError("Activity.person must be a string or None")
+        if not isinstance(start, str) and start is not None:
+            raise ValueError("Activity.start must be a string or None")
+        if not isinstance(end, str) and end is not None:
+            raise ValueError("Activity.end must be a string or None")
+        
         self.tool = []
 
         if type(tool) == str:
             self.tool.append(tool)
         elif type(tool) == list:
             self.tool = tool
+
+        self.object = object
+        self.institute = institute
+        self.person = person     
+        self.start = start
+        self.end = end
 
     def getResponsibleInstitute(self):
         return self.institute
@@ -139,10 +151,13 @@ class Activity(object):      #catalina
         return self.object
 
 
-
 class Acquisition(Activity):
-    def __init__(self, object: CulturalHeritageObject, institute: str, technique: str, person: str, start: str, end: str, tool: str|list[str]):
+    def __init__(self, object: CulturalHeritageObject, institute: str, technique: str, person: str|None=None, start: str|None=None, end: str|None=None, tool: str|list[str]|None=None):
+
         super().__init__(object, institute, person, start, end, tool)  
+
+        if not isinstance(technique, str):
+            raise ValueError("Acquisition.technique must be a string")
         
         self.technique = technique 
 
@@ -330,7 +345,6 @@ class ProcessDataUploadHandler(UploadHandler):  #catalina
     def __init__(self):
         super().__init__()
 
-
     def pushDataToDbActivities(self, file_path: str, field_name: str) -> pd.DataFrame:
 
         with open(file_path, 'r') as file:
@@ -348,7 +362,8 @@ class ProcessDataUploadHandler(UploadHandler):  #catalina
         
         if 'tool' in df_activities.columns:
             df_activities['tool'] = df_activities['tool'].apply(lambda x: ', '.join(x) if isinstance(x, list) else x)
-            
+
+        return df_activities
         return df_activities
 
  
@@ -365,6 +380,7 @@ class ProcessDataUploadHandler(UploadHandler):  #catalina
             columns.insert(4, "technique") 
         identifiers = df[columns]
         identifiers = identifiers.rename(columns={"object id": "objectId"})
+
         return identifiers
         
     def pushDataToDb(self, activities_file_path: str):
@@ -569,97 +585,141 @@ class MetadataQueryHandler(QueryHandler):
 class ProcessDataQueryHandler(QueryHandler): #elena
     def __init__(self):
         super().__init__()
-
+    
     def getAllActivities(self):
         with connect(self.getDbPathOrUrl()) as con:
             tables = ["Acquisition", "Processing", "Modelling", "Optimising", "Exporting"]
-            union_list = [
-                pd.read_sql(f"SELECT * FROM {table}", con)
-                for table in tables
-            ]
-            df_union = pd.concat(union_list, ignore_index=True)
-            return df_union.fillna("")
-    
+            union_list = []
+            for table in tables:
+                try:
+                    df = pd.read_sql(f"SELECT * FROM {table}", con)
+                    union_list.append(df)
+                except Exception as e:
+                    print(f"Error reading table {table}: {e}")
+            if union_list:
+                df_union = pd.concat(union_list, ignore_index=True)
+                return df_union.fillna("")
+            else:
+                return pd.DataFrame()
+            
+        
     def getActivitiesByResponsibleInstitution(self, partialName: str):
         with connect(self.getDbPathOrUrl()) as con:
             tables = ["Acquisition", "Processing", "Modelling", "Optimising", "Exporting"]
-            union_list = [
-                pd.read_sql(
-                    f'SELECT * FROM {table} WHERE "responsible institute" LIKE ?',
-                    con,
-                    params=(f"%{partialName}%",)
-                )
-                for table in tables
-            ]
-            df_union = pd.concat(union_list, ignore_index=True)
-            return df_union.fillna("")
+            union_list = []
+            for table in tables:
+                try:
+                    df = pd.read_sql(
+                        f'SELECT * FROM {table} WHERE "institute" LIKE ?',
+                        con,
+                        params=(f"%{partialName}%",)
+                    )
+                    union_list.append(df)
+                except Exception as e:
+                    print(f"Error reading table {table}: {e}")
+            if union_list:
+                df_union = pd.concat(union_list, ignore_index=True)
+                return df_union.fillna("")
+            else:
+                return pd.DataFrame()
     
+
     def getActivitiesByResponsiblePerson(self, partialName: str):
         with connect(self.getDbPathOrUrl()) as con:
             tables = ["Acquisition", "Processing", "Modelling", "Optimising", "Exporting"]
-            union_list = [
-                pd.read_sql(
-                    f'SELECT * FROM {table} WHERE "responsible person" LIKE ?',
-                    con,
-                    params=(f"%{partialName}%",)
-                )
-                for table in tables
-            ]
-            df_union = pd.concat(union_list, ignore_index=True)
-            return df_union.fillna("")
-
+            union_list = []
+            for table in tables:
+                try:
+                    df = pd.read_sql(
+                        f'SELECT * FROM {table} WHERE "responsible person" LIKE ?',
+                        con,
+                        params=(f"%{partialName}%",)
+                    )
+                    union_list.append(df)
+                except Exception as e:
+                    print(f"Error reading table {table}: {e}")
+            if union_list:
+                df_union = pd.concat(union_list, ignore_index=True)
+                return df_union.fillna("")
+            else:
+                return pd.DataFrame()
                 
+
     def getActivitiesUsingTool(self, partialName: str):
         with connect(self.getDbPathOrUrl()) as con:
             tables = ["Acquisition", "Processing", "Modelling", "Optimising", "Exporting"]
-            union_list = [
-                pd.read_sql(
-                    f'SELECT * FROM {table} WHERE "tool" LIKE ?',
-                    con,
-                    params=(f"%{partialName}%",)
-                )
-                for table in tables
-            ]
-            df_union = pd.concat(union_list, ignore_index=True)
-            return df_union.fillna("")
+            union_list = []
+            for table in tables:
+                try:
+                    df = pd.read_sql(
+                        f'SELECT * FROM {table} WHERE "tool" LIKE ?',
+                        con,
+                        params=(f"%{partialName}%",)
+                    )
+                    union_list.append(df)
+                except Exception as e:
+                    print(f"Error reading table {table}: {e}")
+            if union_list:
+                df_union = pd.concat(union_list, ignore_index=True)
+                return df_union.fillna("")
+            else:
+                return pd.DataFrame()
     
+
     def getActivitiesStartedAfter(self, date: str):
         with connect(self.getDbPathOrUrl()) as con:
             tables = ["Acquisition", "Processing", "Modelling", "Optimising", "Exporting"]
-            union_list = [
-                pd.read_sql(f'SELECT * FROM {table} WHERE "start date" >= ?', con, params=(date,))
-                for table in tables
-            ]
-            df_union = pd.concat(union_list, ignore_index=True)
-            return df_union.fillna("")
+            union_list = []
+            for table in tables:
+                try:
+                    df = pd.read_sql(
+                        f'SELECT * FROM {table} WHERE "start" >= ?',
+                        con,
+                        params=(date,)
+                    )
+                    union_list.append(df)
+                except Exception as e:
+                    print(f"Error reading table {table}: {e}")
+            if union_list:
+                df_union = pd.concat(union_list, ignore_index=True)
+                return df_union.fillna("")
+            else:
+                return pd.DataFrame()
         
+
     def getActivitiesEndedBefore(self, date: str):
         with connect(self.getDbPathOrUrl()) as con:
             tables = ["Acquisition", "Processing", "Modelling", "Optimising", "Exporting"]
-            union_list = [
-                pd.read_sql(
-                    f'SELECT * FROM {table} WHERE "end date" <= ? AND NOT "end date" = ""',
-                    con,
-                    params=(date,)
-                )
-                for table in tables
-            ]
-            df_union = pd.concat(union_list, ignore_index=True)
-            return df_union
+            union_list = []
+            for table in tables:
+                try:
+                    df = pd.read_sql(
+                        f'SELECT * FROM {table} WHERE "end date" <= ? AND "end date" != ""',
+                        con,
+                        params=(date,)
+                    )
+                    union_list.append(df)
+                except Exception as e:
+                    print(f"Error reading table {table}: {e}")
+            if union_list:
+                df_union = pd.concat(union_list, ignore_index=True)
+                return df_union.fillna("")
+            else:
+                return pd.DataFrame()
+
 
     def getAcquisitionsByTechnique(self, partialName: str):
         with connect(self.getDbPathOrUrl()) as con:
-            tables = ["Acquisition", "Processing", "Modelling", "Optimising", "Exporting"]
-            union_list = [
-                pd.read_sql(
-                    f'SELECT * FROM {table} WHERE "technique" LIKE ?',
+            try:
+                df = pd.read_sql(
+                    'SELECT * FROM Acquisition WHERE "technique" LIKE ?',
                     con,
                     params=(f"%{partialName}%",)
                 )
-                for table in tables
-            ]
-            df_union = pd.concat(union_list, ignore_index=True)
-            return df_union.fillna("")
+                return df.fillna("")
+            except Exception as e:
+                print(f"Error reading Acquisition table: {e}")
+                return pd.DataFrame()
 
  #_____________________BasicMashup____________________________   
 
