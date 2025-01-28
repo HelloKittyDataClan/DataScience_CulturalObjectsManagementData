@@ -610,7 +610,7 @@ class ProcessDataQueryHandler(QueryHandler): #elena
             for table in tables:
                 try:
                     df = pd.read_sql(
-                        f'SELECT * FROM {table} WHERE "institute" LIKE ?',
+                        f'SELECT * FROM {table} WHERE "responsible institute" LIKE ?',
                         con,
                         params=(f"%{partialName}%",)
                     )
@@ -673,7 +673,7 @@ class ProcessDataQueryHandler(QueryHandler): #elena
             for table in tables:
                 try:
                     df = pd.read_sql(
-                        f'SELECT * FROM {table} WHERE "start" >= ?',
+                        f'SELECT * FROM {table} WHERE "start date" >= ?',
                         con,
                         params=(date,)
                     )
@@ -694,7 +694,7 @@ class ProcessDataQueryHandler(QueryHandler): #elena
             for table in tables:
                 try:
                     df = pd.read_sql(
-                        f'SELECT * FROM {table} WHERE "end date" <= ? AND "end date" != ""',
+                        f'SELECT * FROM {table} WHERE "end date" <= ? AND NOT "end date" = ""',
                         con,
                         params=(date,)
                     )
