@@ -239,7 +239,7 @@ class MetadataUploadHandler(UploadHandler):  # chiara
             Specimen = URIRef(base_url + "Specimen")
             Painting = URIRef(db + "Painting")
             Model = URIRef(db + "Model")
-            Map = URIRef(base_url + "Map")
+            Map = URIRef(db + "Map")
 
             title = URIRef(schema + "title")
             date = URIRef(schema + "dateCreated")
@@ -411,8 +411,8 @@ class ProcessDataUploadHandler(UploadHandler):  #catalina
 #_____________________QueryHandler____________________________
 
 class QueryHandler(Handler):
-    def _init_(self):  
-        super()._init_()
+    def __init__(self,):  
+        super().__init__()
     
 
     def getById(self, id: str) -> pd.DataFrame:     #beatrice
@@ -460,8 +460,8 @@ class QueryHandler(Handler):
 #_____________________MetadataQueryHandler____________________________   
 
 class MetadataQueryHandler(QueryHandler):
-    def _init_(self):
-        super()._init_()
+    def __init__(self):
+        super().__init__()
     
     def getAllPeople(self):         #chiara
         query = """
@@ -739,7 +739,7 @@ class BasicMashup(object):
             self.processQuery.append(handler)  
             return True
         
-    def getEntityById(self, id: str) -> IdentifiableEntity | None: #beatrice
+    def getEntityById(self, id: str) -> IdentifiableEntity | None:  # beatrice
         if not self.metadataQuery:
             return None
 
@@ -751,62 +751,52 @@ class BasicMashup(object):
 
             row = entity_df.loc[0]
 
+            # Check for non-digit id (presumed to be a Person)
             if not id.isdigit():
                 person_uri = id
                 result = Person(person_uri, row["author_name"])
                 return result
 
-
+            # Get the authors of the CulturalHeritageObject
             authors = self.getAuthorsOfCulturalHeritageObject(id)
 
-            base_url = "http://github.com/HelloKittyDataClan/DSexam/" 
+            # Define base URL for comparison
+            base_url = "http://github.com/HelloKittyDataClan/DSexam/"
 
-
+            # Determine the type of CulturalHeritageObject based on its type in the data
             if row["type"] == base_url + "NauticalChart":
-                new_object = NauticalChart(
-                    id, row["title"], row["owner"], row["place"], authors, row["date"]
-                )
+                new_object = NauticalChart(id, row["title"], row["owner"], row["place"], authors, row["date"])
             elif row["type"] == base_url + "ManuscriptPlate":
-                new_object = ManuscriptPlate(
-                    id, row["title"], row["owner"], row["place"], authors, row["date"]
-                )
+                new_object = ManuscriptPlate(id, row["title"], row["owner"], row["place"], authors, row["date"])
             elif row["type"] == base_url + "ManuscriptVolume":
-                new_object = ManuscriptVolume(
-                    id, row["title"], row["owner"], row["place"], authors, row["date"]
-                )
+                new_object = ManuscriptVolume(id, row["title"], row["owner"], row["place"], authors, row["date"])
             elif row["type"] == base_url + "PrintedVolume":
-                new_object = PrintedVolume(
-                    id, row["title"], row["owner"], row["place"], authors, row["date"]
-                )
+                new_object = PrintedVolume(id, row["title"], row["owner"], row["place"], authors, row["date"])
             elif row["type"] == base_url + "PrintedMaterial":
-                new_object = PrintedMaterial(
-                    id, row["title"], row["owner"], row["place"], authors, row["date"]
-                )
+                new_object = PrintedMaterial(id, row["title"], row["owner"], row["place"], authors, row["date"])
             elif row["type"] == "https://dbpedia.org/property/Herbarium":
-                new_object = Herbarium(
-                    id, row["title"], row["owner"], row["place"], authors, row["date"]
-                )
+                new_object = Herbarium(id, row["title"], row["owner"], row["place"], authors, row["date"])
             elif row["type"] == base_url + "Specimen":
-                new_object = Specimen(
-                    id, row["title"], row["owner"], row["place"], authors, row["date"]
-                )
+                new_object = Specimen(id, row["title"], row["owner"], row["place"], authors, row["date"])
             elif row["type"] == "https://dbpedia.org/property/Painting":
-                new_object = Painting(
-                    id, row["title"], row["owner"], row["place"], authors, row["date"]
-                )
+                new_object = Painting(id, row["title"], row["owner"], row["place"], authors, row["date"])
             elif row["type"] == "https://dbpedia.org/property/Model":
-                new_object = Model(
-                    id, row["title"], row["owner"], row["place"], authors, row["date"]
-                )
+                new_object = Model(id, row["title"], row["owner"], row["place"], authors, row["date"])
             elif row["type"] == "https://dbpedia.org/property/Map":
-                new_object = Map(
-                    id, row["title"], row["owner"], row["place"], authors, row["date"]
-                )
+                new_object = Map(id, row["title"], row["owner"], row["place"], authors, row["date"])
             else:
                 continue
 
-            return new_object
+            # Ensure that the returned object is an instance of CulturalHeritageObject
+            if isinstance(new_object, CulturalHeritageObject):
+                return new_object
+            else:
+                # If it's not an instance of CulturalHeritageObject, log and return None
+                print(f"Warning: Entity with id {id} is not of type CulturalHeritageObject. Returning None.")
+                return None
+
         return None
+
 
         
     def getAllPeople(self):                                            #chiara
@@ -928,19 +918,23 @@ class BasicMashup(object):
         return object_list
 
 
-    def getAllActivities(self) -> List[Activity]:            #elena
-        result = []
-        handler_list = self.processQuery
-        df_list = []
+    def getAllActivities(self) -> List[Activity]:  # elena
+        result = []  
+        handler_list = self.processQuery 
+        df_list = [] 
 
+        # Fetch activities from each handler and append them to df_list
         for handler in handler_list:
             df_list.append(handler.getAllActivities())
 
+        # If no data was retrieved, return an empty list
         if not df_list:
             return []
 
+        # Concatenate the dataframes and remove duplicates
         df_union = pd.concat(df_list, ignore_index=True).drop_duplicates().fillna("")
 
+        # Mapping activity types to corresponding classes
         dict_of_classes = {
             'acquisition': Acquisition,
             'processing': Processing,
@@ -949,39 +943,52 @@ class BasicMashup(object):
             'exporting': Exporting
         }
 
+        # Iterate over the concatenated dataframe and map each row to an activity object
         for _, row in df_union.iterrows():
             match_type = re.search(r'^[^-]*', row["internalId"])
+            
             if match_type:
-                activity_type = match_type.group(0)
-                obj_refers_to = self.getEntityById(row["objectId"])
+                activity_type = match_type.group(0)  # Extract the activity type from internalId
+                obj_refers_to = self.getEntityById(row["objectId"])  # Get the related entity by objectId
 
+                # Check if the retrieved entity is a valid CulturalHeritageObject
+                if not isinstance(obj_refers_to, CulturalHeritageObject):
+                    print(f"Warning: The object with ID {row['objectId']} is not a valid CulturalHeritageObject.")
+                    continue  # Skip invalid object
+
+                # Ensure the activity type is valid and exists in the mapping
                 if activity_type in dict_of_classes:
-                    cls = dict_of_classes[activity_type]
+                    cls = dict_of_classes[activity_type]  # Get the corresponding class
+
+                    # Handle the 'acquisition' activity type with 'technique' field
                     if activity_type == 'acquisition':
                         activity = cls(
                             object=obj_refers_to,
                             institute=row['responsible institute'],
                             person=row['responsible person'],
                             tool=row['tool'],
-                            start=row['start date'],
-                            end=row['end date'],
-                            technique=row['technique']
+                            start=row['start date'] if row['start date'] else None,
+                            end=row['end date'] if row['end date'] else None,
+                            technique=row['technique']  # 'technique' specific to 'acquisition'
                         )
                     else:
+                        # For other activity types, omit 'technique'
                         activity = cls(
                             object=obj_refers_to,
                             institute=row['responsible institute'],
                             person=row['responsible person'],
                             tool=row['tool'],
-                            start=row['start date'],
-                            end=row['end date']
+                            start=row['start date'] if row['start date'] else None,
+                            end=row['end date'] if row['end date'] else None
                         )
+
+                    # Add the created activity to the result list
                     result.append(activity)
 
         return result
 
         
-    def getActivitiesByResponsibleInstitution(self, partialName: str) -> List[Activity]:                     #elena
+    def getActivitiesByResponsibleInstitution(self, partialName: str) -> List[Activity]:  # elena
         result = []  
         handler_list = self.processQuery 
         df_list = [] 
@@ -994,7 +1001,6 @@ class BasicMashup(object):
 
         df_union = pd.concat(df_list, ignore_index=True).drop_duplicates().fillna("")
 
-
         dict_of_classes = {
             'acquisition': Acquisition,
             'processing': Processing,
@@ -1003,6 +1009,7 @@ class BasicMashup(object):
             'exporting': Exporting
         }
 
+        # Filter the dataframe based on partial name match for the institution
         df_union = df_union[df_union['responsible institute'].str.contains(partialName, case=False, na=False)]
 
         for _, row in df_union.iterrows():
@@ -1011,28 +1018,35 @@ class BasicMashup(object):
                 activity_type = match_type.group(0)  
                 obj_refers_to = self.getEntityById(row["objectId"])  
 
-                if activity_type in dict_of_classes:
-                    cls = dict_of_classes[activity_type]  
+                # Ensure that the retrieved object is a valid CulturalHeritageObject
+                if not isinstance(obj_refers_to, CulturalHeritageObject):
+                    print(f"Warning: The object with ID {row['objectId']} is not a valid CulturalHeritageObject.")
+                    continue  # Skip invalid object
 
-                    
+                # Determine which activity class to use
+                if activity_type in dict_of_classes:
+                    cls = dict_of_classes[activity_type]
+
+                    # Handle the 'acquisition' type specifically as it has a 'technique' field
                     if activity_type == 'acquisition':
                         activity = cls(
                             object=obj_refers_to,
                             institute=row['responsible institute'],
                             person=row['responsible person'],
                             tool=row['tool'],
-                            start=row['start date'],
-                            end=row['end date'],
-                            technique=row['technique']  
+                            start=row['start date'] if row['start date'] else None,
+                            end=row['end date'] if row['end date'] else None,
+                            technique=row['technique']  # 'technique' is specific to 'acquisition'
                         )
                     else:
+                        # For other activity types, create the activity without 'technique'
                         activity = cls(
                             object=obj_refers_to,
                             institute=row['responsible institute'],
                             person=row['responsible person'],
                             tool=row['tool'],
-                            start=row['start date'],
-                            end=row['end date']
+                            start=row['start date'] if row['start date'] else None,
+                            end=row['end date'] if row['end date'] else None
                         )
 
                     result.append(activity)
@@ -1040,20 +1054,23 @@ class BasicMashup(object):
         return result
 
 
-    def getActivitiesByResponsiblePerson(self, partialName: str) -> List[Activity]:                     #elena
+    def getActivitiesByResponsiblePerson(self, partialName: str) -> List[Activity]:  # elena
         result = []  
-        handler_list = self.processQuery  
-        df_list = []  
+        handler_list = self.processQuery 
+        df_list = [] 
 
-        
+        # Fetch activities from each handler and append them to df_list
         for handler in handler_list:
             df_list.append(handler.getActivitiesByResponsiblePerson(partialName))
+
+        # If no data was retrieved, return an empty list
         if not df_list:
             return []
 
+        # Concatenate the dataframes and remove duplicates
         df_union = pd.concat(df_list, ignore_index=True).drop_duplicates().fillna("")
 
-        
+        # Mapping activity types to corresponding classes
         dict_of_classes = {
             'acquisition': Acquisition,
             'processing': Processing,
@@ -1062,38 +1079,48 @@ class BasicMashup(object):
             'exporting': Exporting
         }
 
+        # Filter the dataframe based on a partial match for the responsible person
         df_union = df_union[df_union['responsible person'].str.contains(partialName, case=False, na=False)]
 
-        
+        # Iterate over the filtered rows and map them to activity objects
         for _, row in df_union.iterrows():
             match_type = re.search(r'^[^-]*', row["internalId"])
             if match_type:
-                activity_type = match_type.group(0)  
-                obj_refers_to = self.getEntityById(row["objectId"])  
+                activity_type = match_type.group(0)  # Extract the activity type from internalId
+                obj_refers_to = self.getEntityById(row["objectId"])  # Get the related entity by objectId
 
+                # Check if the retrieved entity is a valid CulturalHeritageObject
+                if not isinstance(obj_refers_to, CulturalHeritageObject):
+                    print(f"Warning: The object with ID {row['objectId']} is not a valid CulturalHeritageObject.")
+                    continue  # Skip invalid object
+
+                # Ensure the activity type is valid and exists in the mapping
                 if activity_type in dict_of_classes:
-                    cls = dict_of_classes[activity_type]  
+                    cls = dict_of_classes[activity_type]  # Get the corresponding class
 
+                    # Handle the 'acquisition' activity type with 'technique' field
                     if activity_type == 'acquisition':
                         activity = cls(
                             object=obj_refers_to,
                             institute=row['responsible institute'],
                             person=row['responsible person'],
                             tool=row['tool'],
-                            start=row['start date'],
-                            end=row['end date'],
-                            technique=row['technique']  
+                            start=row['start date'] if row['start date'] else None,
+                            end=row['end date'] if row['end date'] else None,
+                            technique=row['technique']  # 'technique' specific to 'acquisition'
                         )
                     else:
+                        # For other activity types, omit 'technique'
                         activity = cls(
                             object=obj_refers_to,
                             institute=row['responsible institute'],
                             person=row['responsible person'],
                             tool=row['tool'],
-                            start=row['start date'],
-                            end=row['end date']
+                            start=row['start date'] if row['start date'] else None,
+                            end=row['end date'] if row['end date'] else None
                         )
 
+                    # Add the created activity to the result list
                     result.append(activity)
 
         return result
@@ -1335,20 +1362,32 @@ class AdvancedMashup(BasicMashup):
         return obj_list  
     
 
-    def getObjectsHandledByResponsibleInstitution(self, partName: str) -> list[CulturalHeritageObject]:     #beatrice
+    def getObjectsHandledByResponsibleInstitution(self, partName: str) -> list[CulturalHeritageObject]:
         obj_id = set()  
 
-        for activity in self.getActivitiesByResponsibleInstitution(partName):  
-            obj_id.add(activity.refersTo().id)  
+        # Ensure getActivitiesByResponsibleInstitution returns valid activities
+        activities = self.getActivitiesByResponsibleInstitution(partName)
+        if not activities:
+            return []  # If no activities, return an empty list
 
-        cultural_objects = self.getAllCulturalHeritageObjects()  
+        for activity in activities:
+            # Ensure refersTo method returns a valid object and has an id
+            referred_object = activity.refersTo()
+            if referred_object is not None and isinstance(referred_object, CulturalHeritageObject):
+                obj_id.add(referred_object.id)
+            else:
+                print(f"Invalid object referred by activity {activity.id}: {referred_object}")
+        
+        # Ensure the getAllCulturalHeritageObjects method returns valid objects
+        cultural_objects = self.getAllCulturalHeritageObjects()
         obj_list = []
 
         for obj in cultural_objects:
             if obj.id in obj_id:
-                obj_list.append(obj) 
+                obj_list.append(obj)
 
-        return obj_list  
+        return obj_list
+ 
         
     
     def getActivitiesOnObjectsAuthoredBy(self, personId: str) -> list[Activity]: #elena
