@@ -101,7 +101,7 @@ class Map(CulturalHeritageObject):
 #____________________ JSON______________________
 
 class Activity(object):      #catalina                         
-    def __init__(self, object: CulturalHeritageObject, institute: str, person: str|None=None, start: str|None=None, end: str|None=None, tool: str|list[str]|None=None): 
+    def __init__(self, object: CulturalHeritageObject, institute: str, person: str|None=None, start: str|None=None, end: str|None=None, tool: str|set[str]|None = None): 
         if not isinstance(object, CulturalHeritageObject):
             raise ValueError("Activity.object must be a CulturalHeritageObject")
         if not isinstance(institute, str):
@@ -113,11 +113,11 @@ class Activity(object):      #catalina
         if not isinstance(end, str) and end is not None:
             raise ValueError("Activity.end must be a string or None")
         
-        self.tool = []
-
-        if type(tool) == str:
-            self.tool.append(tool)
-        elif type(tool) == list:
+        self.tool = set()
+        
+        if isinstance(tool, str):  
+            self.tool.add(tool)
+        elif isinstance(tool, set):  
             self.tool = tool
 
         self.object = object
@@ -152,7 +152,7 @@ class Activity(object):      #catalina
 
 
 class Acquisition(Activity):
-    def __init__(self, object: CulturalHeritageObject, institute: str, technique: str, person: str|None=None, start: str|None=None, end: str|None=None, tool: str|list[str]|None=None):
+    def __init__(self, object: CulturalHeritageObject, institute: str, technique: str, person: str|None=None, start: str|None=None, end: str|None=None, tool: str|set[str]|None = None):
 
         super().__init__(object, institute, person, start, end, tool)  
 
@@ -361,7 +361,7 @@ class ProcessDataUploadHandler(UploadHandler):  #catalina
         df_activities = pd.DataFrame(table_data)
         
         if 'tool' in df_activities.columns:
-            df_activities['tool'] = df_activities['tool'].apply(lambda x: ', '.join(x) if isinstance(x, list) else x)
+            df_activities['tool'] = df_activities['tool'].apply(lambda x: ', '.join(x) if isinstance(x, (list, set)) else x)
 
         return df_activities
         return df_activities
