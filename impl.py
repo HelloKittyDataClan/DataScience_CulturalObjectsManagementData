@@ -102,17 +102,6 @@ class Map(CulturalHeritageObject):
 
 class Activity(object):      #catalina                         
     def __init__(self, object: CulturalHeritageObject, institute: str, person: str|None=None, start: str|None=None, end: str|None=None, tool: str|set[str]|None = None): 
-        if not isinstance(object, CulturalHeritageObject):
-            raise ValueError("Activity.object must be a CulturalHeritageObject")
-        if not isinstance(institute, str):
-            raise ValueError("Activity.institute must be a string")
-        if not isinstance(person, str) and person is not None:
-            raise ValueError("Activity.person must be a string or None")
-        if not isinstance(start, str) and start is not None:
-            raise ValueError("Activity.start must be a string or None")
-        if not isinstance(end, str) and end is not None:
-            raise ValueError("Activity.end must be a string or None")
-        
         self.tool = set()
         
         if isinstance(tool, str):  
@@ -1163,7 +1152,7 @@ class BasicMashup(object):
         df_union['start date'] = pd.to_datetime(df_union['start date'], errors='coerce')
 
         df_filtered = df_union[df_union["start date"].notna()]
-        df_filtered = df_filtered[df_filtered["start date"] >= pd.to_datetime(date)]
+        df_filtered = df_filtered[df_filtered["start date"] >= datetime.strptime(date, '%Y-%m-%d')]
 
         dict_of_classes = {
             'acquisition': Acquisition,
@@ -1370,7 +1359,7 @@ class AdvancedMashup(BasicMashup):
 
         ids_of_filtered_objects = set()
         for act in filtered_activities_after:
-            date = datetime.strptime(act.end, '%Y-%m-%d')
+            date = act.end
             if date <= datetime.strptime(end, '%Y-%m-%d'):
                 ids_of_filtered_objects.add(act.refersTo().id)
         
@@ -1394,3 +1383,41 @@ class AdvancedMashup(BasicMashup):
         return result_list
 
 
+# Once all the classes are imported, first create the relational
+# database using the related source data
+rel_path = "relational.db"
+process = ProcessDataUploadHandler()
+process.setDbPathOrUrl(rel_path)
+process.pushDataToDb("data/process.json")
+# Please remember that one could, in principle, push one or more files
+# calling the method one or more times (even calling the method twice
+# specifying the same file!)
+
+# Then, create the graph database (remember first to run the
+# Blazegraph instance) using the related source data
+grp_endpoint = "http://10.201.5.75:9999/blazegraph/sparql"
+metadata = MetadataUploadHandler()
+metadata.setDbPathOrUrl(grp_endpoint)
+metadata.pushDataToDb("data/meta.csv")
+# Please remember that one could, in principle, push one or more files
+# calling the method one or more times (even calling the method twice
+# specifying the same file!)
+
+# In the next passage, create the query handlers for both
+# the databases, using the related classes
+process_qh = ProcessDataQueryHandler()
+process_qh.setDbPathOrUrl(rel_path)
+
+metadata_qh = MetadataQueryHandler()
+metadata_qh.setDbPathOrUrl(grp_endpoint)
+
+# Finally, create a advanced mashup object for asking
+# about data
+mashup = AdvancedMashup()
+mashup.addProcessHandler(process_qh)
+mashup.addMetadataHandler(metadata_qh)
+
+result_q1 = mashup.getAllActivities()
+result_q3 = mashup.getAuthorsOfObjectsAcquiredInTimeFrame("2023-04-01", "2023-05-01")
+pp(result_q3)
+# etc...
