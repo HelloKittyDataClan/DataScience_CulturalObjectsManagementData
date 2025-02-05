@@ -388,7 +388,7 @@ class ProcessDataUploadHandler(UploadHandler):  #catalina
         optimising_final_db = self.extractAndRenameColumns(optimising_df)
         exporting_final_db = self.extractAndRenameColumns(exporting_df)
         
-        with connect("relational.db") as con:
+        with connect(self.getDbPathOrUrl()) as con:
             acquisition_final_db.to_sql("Acquisition", con, if_exists="replace", index=False)
             processing_final_db.to_sql("Processing", con, if_exists="replace", index=False)
             modelling_final_db.to_sql("Modelling", con, if_exists="replace", index=False)
