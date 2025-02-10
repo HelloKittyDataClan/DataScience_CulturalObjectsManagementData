@@ -347,16 +347,13 @@ class ProcessDataUploadHandler(UploadHandler):  #catalina
             df_activities['tool'] = df_activities['tool'].apply(lambda x: ', '.join(x) if isinstance(x, (list, set)) else x)
 
         return df_activities
-        return df_activities
 
- 
     def addInternalIds(self, df: pd.DataFrame, field_name: str) -> pd.DataFrame:
         internal_ids = [f"{field_name}-{idx}" for idx in range(len(df))]
         df.insert(0, "internalId", Series(internal_ids, dtype="string"))
         
         return df
 
- 
     def extractAndRenameColumns(self, df: pd.DataFrame, include_technique: bool = False) -> pd.DataFrame:
         columns = ["internalId", "object id", "responsible institute", "responsible person", "tool", "start date", "end date"]
         if include_technique:
