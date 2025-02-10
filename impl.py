@@ -132,7 +132,7 @@ class Activity(object):      #catalina
         return None
 
     def getEndDate(self):
-        if self.start:
+        if self.end:
             return self.end
         return None
         
@@ -144,9 +144,6 @@ class Acquisition(Activity):
     def __init__(self, object: CulturalHeritageObject, institute: str, technique: str, person: str|None=None, start: str|None=None, end: str|None=None, tool: str|set[str]|None = None):
 
         super().__init__(object, institute, person, start, end, tool)  
-
-        if not isinstance(technique, str):
-            raise ValueError("Acquisition.technique must be a string")
         
         self.technique = technique 
 
