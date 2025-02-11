@@ -671,7 +671,7 @@ class ProcessDataQueryHandler(QueryHandler): #elena
                     df = pd.read_sql(
                         f'SELECT * FROM {table} WHERE "end date" <= ? AND NOT "end date" = ""',
                         con,
-                        params=(date,)
+                        params=(date)
                     )
                     union_list.append(df)
                 except Exception as e:
@@ -774,7 +774,6 @@ class BasicMashup(object):
                 return None
 
         return None
-
 
         
     def getAllPeople(self):                                            #chiara
@@ -1174,7 +1173,7 @@ class BasicMashup(object):
                             person=row['responsible person'],
                             tool=row['tool'],
                             start=start_date,
-                            end=row['start date'],
+                            end=row['end date'],
                             technique=row['technique']
                         )
                     else:
