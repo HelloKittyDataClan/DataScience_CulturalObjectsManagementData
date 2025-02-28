@@ -721,59 +721,63 @@ class BasicMashup(object):
         else:
             self.processQuery.append(handler)  
             return True
+
+            
         
-    def getEntityById(self, id: str) -> IdentifiableEntity | None:  # beatrice
-        if not self.metadataQuery:
+   def getEntityById(self, id: str) -> IdentifiableEntity | None:  # beatrice
+    if not self.metadataQuery:
+        return None
+
+    for handler in self.metadataQuery:
+        entity_df = handler.getById(id)
+
+        if entity_df.empty:
+            continue
+
+        row = entity_df.loc[0]
+
+        if not id.isdigit():
+            person_uri = id
+            result = Person(person_uri, row["author_name"])
+            return result
+
+        authors = self.getAuthorsOfCulturalHeritageObject(id)
+
+        base_url = "http://github.com/HelloKittyDataClan/DSexam/"
+
+        # Converte la data in stringa
+        date_as_string = str(row["date"])  # Conversione esplicita a stringa
+
+        if row["type"] == base_url + "NauticalChart":
+            new_object = NauticalChart(id, row["title"], row["owner"], row["place"], authors, date_as_string)
+        elif row["type"] == base_url + "ManuscriptPlate":
+            new_object = ManuscriptPlate(id, row["title"], row["owner"], row["place"], authors, date_as_string)
+        elif row["type"] == base_url + "ManuscriptVolume":
+            new_object = ManuscriptVolume(id, row["title"], row["owner"], row["place"], authors, date_as_string)
+        elif row["type"] == base_url + "PrintedVolume":
+            new_object = PrintedVolume(id, row["title"], row["owner"], row["place"], authors, date_as_string)
+        elif row["type"] == base_url + "PrintedMaterial":
+            new_object = PrintedMaterial(id, row["title"], row["owner"], row["place"], authors, date_as_string)
+        elif row["type"] == "https://dbpedia.org/property/Herbarium":
+            new_object = Herbarium(id, row["title"], row["owner"], row["place"], authors, date_as_string)
+        elif row["type"] == base_url + "Specimen":
+            new_object = Specimen(id, row["title"], row["owner"], row["place"], authors, date_as_string)
+        elif row["type"] == "https://dbpedia.org/property/Painting":
+            new_object = Painting(id, row["title"], row["owner"], row["place"], authors, date_as_string)
+        elif row["type"] == "https://dbpedia.org/property/Model":
+            new_object = Model(id, row["title"], row["owner"], row["place"], authors, date_as_string)
+        elif row["type"] == "https://dbpedia.org/property/Map":
+            new_object = Map(id, row["title"], row["owner"], row["place"], authors, date_as_string)
+        else:
+            continue
+
+        if isinstance(new_object, CulturalHeritageObject):
+            return new_object
+        else:
+            print(f"Warning: Entity with id {id} is not of type CulturalHeritageObject. Returning None.")
             return None
 
-        for handler in self.metadataQuery:
-            entity_df = handler.getById(id)
-
-            if entity_df.empty:
-                continue
-
-            row = entity_df.loc[0]
-
-            if not id.isdigit():
-                person_uri = id
-                result = Person(person_uri, row["author_name"])
-                return result
-
-            authors = self.getAuthorsOfCulturalHeritageObject(id)
-
-            base_url = "http://github.com/HelloKittyDataClan/DSexam/"
-
-
-            if row["type"] == base_url + "NauticalChart":
-                new_object = NauticalChart(id, row["title"], row["owner"], row["place"], authors, row["date"])
-            elif row["type"] == base_url + "ManuscriptPlate":
-                new_object = ManuscriptPlate(id, row["title"], row["owner"], row["place"], authors, row["date"])
-            elif row["type"] == base_url + "ManuscriptVolume":
-                new_object = ManuscriptVolume(id, row["title"], row["owner"], row["place"], authors, row["date"])
-            elif row["type"] == base_url + "PrintedVolume":
-                new_object = PrintedVolume(id, row["title"], row["owner"], row["place"], authors, row["date"])
-            elif row["type"] == base_url + "PrintedMaterial":
-                new_object = PrintedMaterial(id, row["title"], row["owner"], row["place"], authors, row["date"])
-            elif row["type"] == "https://dbpedia.org/property/Herbarium":
-                new_object = Herbarium(id, row["title"], row["owner"], row["place"], authors, row["date"])
-            elif row["type"] == base_url + "Specimen":
-                new_object = Specimen(id, row["title"], row["owner"], row["place"], authors, row["date"])
-            elif row["type"] == "https://dbpedia.org/property/Painting":
-                new_object = Painting(id, row["title"], row["owner"], row["place"], authors, row["date"])
-            elif row["type"] == "https://dbpedia.org/property/Model":
-                new_object = Model(id, row["title"], row["owner"], row["place"], authors, row["date"])
-            elif row["type"] == "https://dbpedia.org/property/Map":
-                new_object = Map(id, row["title"], row["owner"], row["place"], authors, row["date"])
-            else:
-                continue
-
-            if isinstance(new_object, CulturalHeritageObject):
-                return new_object
-            else:
-                print(f"Warning: Entity with id {id} is not of type CulturalHeritageObject. Returning None.")
-                return None
-
-        return None
+    return None
 
         
     def getAllPeople(self):                                            #chiara
