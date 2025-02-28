@@ -671,7 +671,7 @@ class ProcessDataQueryHandler(QueryHandler): #elena
                     df = pd.read_sql(
                         f'SELECT * FROM {table} WHERE "end date" <= ?',
                         con,
-                        params=(date)
+                        params=(date,)
                     )
                     union_list.append(df)
                 except Exception as e:
