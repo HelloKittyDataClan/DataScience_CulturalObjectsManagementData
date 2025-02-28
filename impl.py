@@ -138,8 +138,7 @@ class Activity(object):      #catalina
         
     def refersTo(self):
         return self.object
-
-
+    
 class Acquisition(Activity):
     def __init__(self, object: CulturalHeritageObject, institute: str, technique: str, person: str|None=None, start: str|None=None, end: str|None=None, tool: str|set[str]|None = None):
 
@@ -163,6 +162,7 @@ class Optimising(Activity):
 
 class Exporting(Activity):
     pass
+
 
 #_______________Handlers_____________________
 
@@ -1133,17 +1133,23 @@ class BasicMashup(object):
         return result
     
 
-    def getActivitiesStartedAfter(self, date: str) -> List[Activity]:  
-        df = pd.DataFrame()
+    def getActivitiesStartedAfter(self, date: str) -> List[Activity]:   #catalina
+        result = []
+        handler_list = self.processQuery
+        df_list = []
 
-        for process_qh in self.processQuery:
-            process_df_to_add = process_qh.getActivitiesStartedAfter(date)
-            df = pd.concat([df, process_df_to_add], ignore_index=True).drop_duplicates()
-
-        df.fillna("", inplace=True)
-
-        if df.empty:
+        
+        for handler in handler_list:
+            df_list.append(handler.getActivitiesStartedAfter(date))
+        if not df_list:
             return []
+
+        df_union = pd.concat(df_list, ignore_index=True).drop_duplicates().fillna("")
+        
+        df_union['start date'] = pd.to_datetime(df_union['start date'], errors='coerce')
+
+        df_filtered = df_union[df_union["start date"].notna()]
+        df_filtered = df_filtered[df_filtered["start date"] >= datetime.strptime(date, '%Y-%m-%d')]
 
         dict_of_classes = {
             'acquisition': Acquisition,
@@ -1153,50 +1159,57 @@ class BasicMashup(object):
             'exporting': Exporting
         }
 
-        list_of_activities = []
-        
-        for _, row in df.iterrows():
+        for _, row in df_filtered.iterrows():
             match_type = re.search(r'^[^-]*', row["internalId"])
             if match_type:
-                act_type = match_type.group(0)
+                activity_type = match_type.group(0)
+                obj_refers_to = self.getEntityById(row["objectId"])
 
-                if act_type in dict_of_classes:
-                    cls = dict_of_classes[act_type]
-                    act_refersTo = self.getEntityById(str(row["objectId"]))
-                    act_institute = row["responsible institute"]
-                    act_person = row["responsible person"]
-                    act_start = row["start date"]
-                    act_end = row["end date"]
-                    act_tool = row["tool"]
+                if activity_type in dict_of_classes:
+                    cls = dict_of_classes[activity_type]
+                    
+                    start_date = row['start date'] if isinstance(row['start date'], (str, type(None))) else None
 
-                    if cls == Acquisition:
-                        act_technique = row["technique"]
-                        result_activity = cls(
-                            act_refersTo, act_institute, act_technique, act_person, 
-                            act_start, act_end, act_tool
+                    if activity_type == 'acquisition':
+                        activity = cls(
+                            object=obj_refers_to,
+                            institute=row['responsible institute'],
+                            person=row['responsible person'],
+                            tool=row['tool'],
+                            start=start_date,
+                            end=row['end date'],
+                            technique=row['technique']
                         )
                     else:
-                        result_activity = cls(
-                            act_refersTo, act_institute, act_person, 
-                            act_start, act_end, act_tool
+                        activity = cls(
+                            object=obj_refers_to,
+                            institute=row['responsible institute'],
+                            person=row['responsible person'],
+                            tool=row['tool'],
+                            start=start_date,
+                            end=row['end date']
                         )
+                    result.append(activity)
 
-                    list_of_activities.append(result_activity)
-
-        return list_of_activities
+        return result
 
 
-    def getActivitiesEndedBefore(self, date: str) -> List[Activity]:  
-        df = pd.DataFrame()
+    def getActivitiesEndedBefore(self, date: str) -> List[Activity]:        #catalina
+        result = []
+        handler_list = self.processQuery
+        df_list = []
 
-        for process_qh in self.processQuery:
-            process_df_to_add = process_qh.getActivitiesEndedBefore(date)
-            df = pd.concat([df, process_df_to_add], ignore_index=True).drop_duplicates()
-
-        df.fillna("", inplace=True)
-
-        if df.empty:
+        for handler in handler_list:
+            df_list.append(handler.getActivitiesEndedBefore(date))
+        if not df_list:
             return []
+
+        df_union = pd.concat(df_list, ignore_index=True).drop_duplicates().fillna("")
+        
+        df_union['end date'] = pd.to_datetime(df_union['end date'], errors='coerce')
+
+        df_filtered = df_union[df_union["end date"].notna()]
+        df_filtered = df_filtered[df_filtered["end date"] <= datetime.strptime(date, '%Y-%m-%d')]
 
         dict_of_classes = {
             'acquisition': Acquisition,
@@ -1206,38 +1219,40 @@ class BasicMashup(object):
             'exporting': Exporting
         }
 
-        list_of_activities = []
-        
-        for _, row in df.iterrows():
+        for _, row in df_filtered.iterrows():
             match_type = re.search(r'^[^-]*', row["internalId"])
             if match_type:
-                act_type = match_type.group(0)
+                activity_type = match_type.group(0)
+                obj_refers_to = self.getEntityById(row["objectId"])
 
-                if act_type in dict_of_classes:
-                    cls = dict_of_classes[act_type]
-                    act_refersTo = self.getEntityById(str(row["objectId"]))
-                    act_institute = row["responsible institute"]
-                    act_person = row["responsible person"]
-                    act_start = row["start date"]
-                    act_end = row["end date"]
-                    act_tool = row["tool"]
+                if activity_type in dict_of_classes:
+                    cls = dict_of_classes[activity_type]
+                    
+                    end_date = row['end date'].strftime('%Y-%m-%d') if pd.notna(row['end date']) else None
 
-                    if cls == Acquisition:
-                        act_technique = row["technique"]
-                        result_activity = cls(
-                            act_refersTo, act_institute, act_technique, act_person, 
-                            act_start, act_end, act_tool
+                    if activity_type == 'acquisition':
+                        activity = cls(
+                            object=obj_refers_to,
+                            institute=row['responsible institute'],
+                            person=row['responsible person'],
+                            tool=row['tool'],
+                            start=row['start date'],
+                            end=end_date,
+                            technique=row['technique']
                         )
                     else:
-                        result_activity = cls(
-                            act_refersTo, act_institute, act_person, 
-                            act_start, act_end, act_tool
+                        activity = cls(
+                            object=obj_refers_to,
+                            institute=row['responsible institute'],
+                            person=row['responsible person'],
+                            tool=row['tool'],
+                            start=row['start date'],
+                            end=end_date
                         )
+                    result.append(activity)
 
-                    list_of_activities.append(result_activity)
-
-        return list_of_activities
-
+        return result
+    
 
     def getAcquisitionsByTechnique(self, partialName: str) -> list[Acquisition]:            #catalina
         df = pd.DataFrame()
