@@ -325,9 +325,8 @@ class MetadataUploadHandler(UploadHandler):  # chiara
 
 
 class ProcessDataUploadHandler(UploadHandler):  #catalina
-    def __init__(self, db_url: str):
+    def __init__(self):
         super().__init__()
-        self.db_url = db_url
 
     def pushDataToDbActivities(self, file_path: str, field_name: str) -> pd.DataFrame:
 
@@ -670,7 +669,7 @@ class ProcessDataQueryHandler(QueryHandler): #elena
             for table in tables:
                 try:
                     df = pd.read_sql(
-                        f'SELECT * FROM {table} WHERE "end date" <= ? AND NOT "end date" = ""',
+                        f'SELECT * FROM {table} WHERE "end date" <= ?',
                         con,
                         params=(date)
                     )
@@ -725,60 +724,60 @@ class BasicMashup(object):
 
             
         
-   def getEntityById(self, id: str) -> IdentifiableEntity | None:  # beatrice
-    if not self.metadataQuery:
-        return None
-
-    for handler in self.metadataQuery:
-        entity_df = handler.getById(id)
-
-        if entity_df.empty:
-            continue
-
-        row = entity_df.loc[0]
-
-        if not id.isdigit():
-            person_uri = id
-            result = Person(person_uri, row["author_name"])
-            return result
-
-        authors = self.getAuthorsOfCulturalHeritageObject(id)
-
-        base_url = "http://github.com/HelloKittyDataClan/DSexam/"
-
-        # Converte la data in stringa
-        date_as_string = str(row["date"])  # Conversione esplicita a stringa
-
-        if row["type"] == base_url + "NauticalChart":
-            new_object = NauticalChart(id, row["title"], row["owner"], row["place"], authors, date_as_string)
-        elif row["type"] == base_url + "ManuscriptPlate":
-            new_object = ManuscriptPlate(id, row["title"], row["owner"], row["place"], authors, date_as_string)
-        elif row["type"] == base_url + "ManuscriptVolume":
-            new_object = ManuscriptVolume(id, row["title"], row["owner"], row["place"], authors, date_as_string)
-        elif row["type"] == base_url + "PrintedVolume":
-            new_object = PrintedVolume(id, row["title"], row["owner"], row["place"], authors, date_as_string)
-        elif row["type"] == base_url + "PrintedMaterial":
-            new_object = PrintedMaterial(id, row["title"], row["owner"], row["place"], authors, date_as_string)
-        elif row["type"] == "https://dbpedia.org/property/Herbarium":
-            new_object = Herbarium(id, row["title"], row["owner"], row["place"], authors, date_as_string)
-        elif row["type"] == base_url + "Specimen":
-            new_object = Specimen(id, row["title"], row["owner"], row["place"], authors, date_as_string)
-        elif row["type"] == "https://dbpedia.org/property/Painting":
-            new_object = Painting(id, row["title"], row["owner"], row["place"], authors, date_as_string)
-        elif row["type"] == "https://dbpedia.org/property/Model":
-            new_object = Model(id, row["title"], row["owner"], row["place"], authors, date_as_string)
-        elif row["type"] == "https://dbpedia.org/property/Map":
-            new_object = Map(id, row["title"], row["owner"], row["place"], authors, date_as_string)
-        else:
-            continue
-
-        if isinstance(new_object, CulturalHeritageObject):
-            return new_object
-        else:
-            print(f"Warning: Entity with id {id} is not of type CulturalHeritageObject. Returning None.")
+    def getEntityById(self, id: str) -> IdentifiableEntity | None:  # beatrice
+        if not self.metadataQuery:
             return None
 
-    return None
+        for handler in self.metadataQuery:
+            entity_df = handler.getById(id)
+
+            if entity_df.empty:
+                continue
+
+            row = entity_df.loc[0]
+
+            if not id.isdigit():
+                person_uri = id
+                result = Person(person_uri, row["author_name"])
+                return result
+
+            authors = self.getAuthorsOfCulturalHeritageObject(id)
+
+            base_url = "http://github.com/HelloKittyDataClan/DSexam/"
+
+            # Converte la data in stringa
+            date_as_string = str(row["date"])  # Conversione esplicita a stringa
+
+            if row["type"] == base_url + "NauticalChart":
+                new_object = NauticalChart(id, row["title"], row["owner"], row["place"], authors, date_as_string)
+            elif row["type"] == base_url + "ManuscriptPlate":
+                new_object = ManuscriptPlate(id, row["title"], row["owner"], row["place"], authors, date_as_string)
+            elif row["type"] == base_url + "ManuscriptVolume":
+                new_object = ManuscriptVolume(id, row["title"], row["owner"], row["place"], authors, date_as_string)
+            elif row["type"] == base_url + "PrintedVolume":
+                new_object = PrintedVolume(id, row["title"], row["owner"], row["place"], authors, date_as_string)
+            elif row["type"] == base_url + "PrintedMaterial":
+                new_object = PrintedMaterial(id, row["title"], row["owner"], row["place"], authors, date_as_string)
+            elif row["type"] == "https://dbpedia.org/property/Herbarium":
+                new_object = Herbarium(id, row["title"], row["owner"], row["place"], authors, date_as_string)
+            elif row["type"] == base_url + "Specimen":
+                new_object = Specimen(id, row["title"], row["owner"], row["place"], authors, date_as_string)
+            elif row["type"] == "https://dbpedia.org/property/Painting":
+                new_object = Painting(id, row["title"], row["owner"], row["place"], authors, date_as_string)
+            elif row["type"] == "https://dbpedia.org/property/Model":
+                new_object = Model(id, row["title"], row["owner"], row["place"], authors, date_as_string)
+            elif row["type"] == "https://dbpedia.org/property/Map":
+                new_object = Map(id, row["title"], row["owner"], row["place"], authors, date_as_string)
+            else:
+                continue
+
+            if isinstance(new_object, CulturalHeritageObject):
+                return new_object
+            else:
+                print(f"Warning: Entity with id {id} is not of type CulturalHeritageObject. Returning None.")
+                return None
+
+        return None
 
         
     def getAllPeople(self):                                            #chiara
@@ -1141,17 +1140,13 @@ class BasicMashup(object):
 
         
         for handler in handler_list:
-            df_list.append(handler.getAllActivities())
+            df_list.append(handler.getActivitiesStartedAfter(date))
+            
         if not df_list:
             return []
 
         df_union = pd.concat(df_list, ignore_index=True).drop_duplicates().fillna("")
-        
-        df_union['start date'] = pd.to_datetime(df_union['start date'], errors='coerce')
-
-        df_filtered = df_union[df_union["start date"].notna()]
-        df_filtered = df_filtered[df_filtered["start date"] >= datetime.strptime(date, '%Y-%m-%d')]
-
+    
         dict_of_classes = {
             'acquisition': Acquisition,
             'processing': Processing,
@@ -1160,7 +1155,7 @@ class BasicMashup(object):
             'exporting': Exporting
         }
 
-        for _, row in df_filtered.iterrows():
+        for _, row in df_union.iterrows():
             match_type = re.search(r'^[^-]*', row["internalId"])
             if match_type:
                 activity_type = match_type.group(0)
@@ -1168,8 +1163,6 @@ class BasicMashup(object):
 
                 if activity_type in dict_of_classes:
                     cls = dict_of_classes[activity_type]
-                    
-                    start_date = row['start date'] if isinstance(row['start date'], (str, type(None))) else None
 
                     if activity_type == 'acquisition':
                         activity = cls(
@@ -1177,7 +1170,7 @@ class BasicMashup(object):
                             institute=row['responsible institute'],
                             person=row['responsible person'],
                             tool=row['tool'],
-                            start=start_date,
+                            start=['start_date'],
                             end=row['end date'],
                             technique=row['technique']
                         )
@@ -1187,7 +1180,7 @@ class BasicMashup(object):
                             institute=row['responsible institute'],
                             person=row['responsible person'],
                             tool=row['tool'],
-                            start=start_date,
+                            start=['start_date'],
                             end=row['end date']
                         )
                     result.append(activity)
@@ -1201,16 +1194,11 @@ class BasicMashup(object):
         df_list = []
 
         for handler in handler_list:
-            df_list.append(handler.getAllActivities())
+            df_list.append(handler.getActivitiesEndedBefore(date))
         if not df_list:
             return []
 
         df_union = pd.concat(df_list, ignore_index=True).drop_duplicates().fillna("")
-        
-        df_union['end date'] = pd.to_datetime(df_union['end date'], errors='coerce')
-
-        df_filtered = df_union[df_union["end date"].notna()]
-        df_filtered = df_filtered[df_filtered["end date"] < pd.to_datetime(date)]
 
         dict_of_classes = {
             'acquisition': Acquisition,
@@ -1220,7 +1208,7 @@ class BasicMashup(object):
             'exporting': Exporting
         }
 
-        for _, row in df_filtered.iterrows():
+        for _, row in df_union.iterrows():
             match_type = re.search(r'^[^-]*', row["internalId"])
             if match_type:
                 activity_type = match_type.group(0)
@@ -1228,8 +1216,6 @@ class BasicMashup(object):
 
                 if activity_type in dict_of_classes:
                     cls = dict_of_classes[activity_type]
-                    
-                    end_date = row['end date'] if isinstance(row['end date'], (str, type(None))) else None
 
                     if activity_type == 'acquisition':
                         activity = cls(
@@ -1238,7 +1224,7 @@ class BasicMashup(object):
                             person=row['responsible person'],
                             tool=row['tool'],
                             start=row['start date'],
-                            end=end_date,
+                            end=['end_date'],
                             technique=row['technique']
                         )
                     else:
@@ -1248,7 +1234,7 @@ class BasicMashup(object):
                             person=row['responsible person'],
                             tool=row['tool'],
                             start=row['start date'],
-                            end=end_date
+                            end=['end_date']
                         )
                     result.append(activity)
 
@@ -1361,7 +1347,7 @@ class AdvancedMashup(BasicMashup):
 
         ids_of_filtered_objects = set()
         for act in filtered_activities_after:
-            date = act.end
+            date = datetime.strptime(act.end, '%Y-%m-%d')
             if date <= datetime.strptime(end, '%Y-%m-%d'):
                 ids_of_filtered_objects.add(act.refersTo().id)
         
@@ -1385,7 +1371,7 @@ class AdvancedMashup(BasicMashup):
         return result_list
 
 
-# Once all the classes are imported, first create the relational
+"""# Once all the classes are imported, first create the relational
 # database using the related source data
 rel_path = "relational.db"
 process = ProcessDataUploadHandler()
@@ -1423,3 +1409,4 @@ result_q1 = mashup.getAllActivities()
 result_q3 = mashup.getAuthorsOfObjectsAcquiredInTimeFrame("2023-04-01", "2023-05-01")
 pp(result_q3)
 # etc...
+"""
