@@ -63,7 +63,7 @@ class CulturalHeritageObject(IdentifiableEntity):        #chiara
     def getPlace(self) -> str:
         return self.place
 
-    def hasAuthors(self) -> list[Person]:
+    def getAuthors(self) -> list[Person]:
         return self.authors
     
 
@@ -325,8 +325,9 @@ class MetadataUploadHandler(UploadHandler):  # chiara
 
 
 class ProcessDataUploadHandler(UploadHandler):  #catalina
-    def __init__(self):
+    def __init__(self, db_url: str):
         super().__init__()
+        self.db_url = db_url
 
     def pushDataToDbActivities(self, file_path: str, field_name: str) -> pd.DataFrame:
 
@@ -641,7 +642,7 @@ class ProcessDataQueryHandler(QueryHandler): #elena
                 return pd.DataFrame()
     
 
-    def getActivitiesStartedAfter(self, date: str):            #catalina
+    def getActivitiesStartedAfter(self, date: str):            
         with connect(self.getDbPathOrUrl()) as con:
             tables = ["Acquisition", "Processing", "Modelling", "Optimising", "Exporting"]
             union_list = []
@@ -1348,7 +1349,11 @@ class AdvancedMashup(BasicMashup):
     def getAuthorsOfObjectsAcquiredInTimeFrame(self, start: str, end: str) -> list[Person]: #catalina
         
         activities_after = self.getActivitiesStartedAfter(start)
-        filtered_activities_after = [activity for activity in activities_after if isinstance(activity, Acquisition)]
+
+        filtered_activities_after = []
+        for activity in activities_after:
+            if isinstance(activity, Acquisition):
+                filtered_activities_after.append(activity)
 
         ids_of_filtered_objects = set()
         for act in filtered_activities_after:
